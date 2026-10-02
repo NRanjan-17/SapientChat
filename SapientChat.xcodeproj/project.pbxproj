@@ -6,6 +6,10 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E23B08E0307006CB00D68255 /* Sapient in Frameworks */ = {isa = PBXBuildFile; productRef = E23B08E2307006CB00D68255 /* Sapient */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E23B08C6307006CB00D68255 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -51,6 +55,7 @@
 		E23B08B5307006CA00D68255 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				E23B08E0307006CB00D68255 /* Sapient in Frameworks */,
 			);
 		};
 		E23B08C2307006CB00D68255 /* Frameworks */ = {
@@ -103,6 +108,9 @@
 				E23B08BA307006CA00D68255 /* SapientChat */,
 			);
 			name = SapientChat;
+			packageProductDependencies = (
+				E23B08E2307006CB00D68255 /* Sapient */,
+			);
 			productName = SapientChat;
 			productReference = E23B08B8307006CA00D68255 /* SapientChat.app */;
 			productType = "com.apple.product-type.application";
@@ -181,6 +189,9 @@
 			);
 			mainGroup = E23B08AF307006CA00D68255;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E23B08E1307006CB00D68255 /* XCRemoteSwiftPackageReference "sapient-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E23B08B9307006CA00D68255 /* Products */;
 			projectDirPath = "";
@@ -548,6 +559,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E23B08E1307006CB00D68255 /* XCRemoteSwiftPackageReference "sapient-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/openhorizon-labs/sapient-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.6.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E23B08E2307006CB00D68255 /* Sapient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E23B08E1307006CB00D68255 /* XCRemoteSwiftPackageReference "sapient-swift" */;
+			productName = Sapient;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E23B08B0307006CA00D68255 /* Project object */;
 	validationLevel = 1;

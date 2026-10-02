@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct SapientChatApp: App {
+    @State private var viewModel = ChatViewModel()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ChatView(viewModel: viewModel)
         }
     }
 }
