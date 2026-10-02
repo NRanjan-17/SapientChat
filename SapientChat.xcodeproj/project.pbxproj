@@ -190,7 +190,7 @@
 			mainGroup = E23B08AF307006CA00D68255;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				E23B08E1307006CB00D68255 /* XCRemoteSwiftPackageReference "sapient-swift" */,
+				E23B08E1307006CB00D68255 /* XCLocalSwiftPackageReference "../GitHub/sapient/dist/mobile/sapient-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E23B08B9307006CA00D68255 /* Products */;
@@ -560,21 +560,17 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		E23B08E1307006CB00D68255 /* XCRemoteSwiftPackageReference "sapient-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/openhorizon-labs/sapient-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.6.2;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		E23B08E1307006CB00D68255 /* XCLocalSwiftPackageReference "../GitHub/sapient/dist/mobile/sapient-swift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../GitHub/sapient/dist/mobile/sapient-swift;
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		E23B08E2307006CB00D68255 /* Sapient */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E23B08E1307006CB00D68255 /* XCRemoteSwiftPackageReference "sapient-swift" */;
+			package = E23B08E1307006CB00D68255 /* XCLocalSwiftPackageReference "../GitHub/sapient/dist/mobile/sapient-swift" */;
 			productName = Sapient;
 		};
 /* End XCSwiftPackageProductDependency section */

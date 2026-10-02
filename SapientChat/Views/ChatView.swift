@@ -3,6 +3,7 @@ import SwiftUI
 /// The chat screen. Layout only; all state and logic live in `ChatViewModel`.
 struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
+    @State private var benchmark: BenchmarkViewModel?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -27,9 +28,16 @@ struct ChatView: View {
                             .disabled(viewModel.isBusy)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
+                        Button("Benchmark", systemImage: "gauge.with.dots.needle.67percent", action: openBenchmark)
+                            .disabled(viewModel.isBusy)
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button("Clear", systemImage: "trash", action: viewModel.clearConversation)
                             .disabled(!viewModel.canClear)
                     }
+                }
+                .sheet(item: $benchmark) { benchmark in
+                    BenchmarkView(viewModel: benchmark)
                 }
         }
         .task { await viewModel.observeThermalPressure() }
@@ -37,6 +45,10 @@ struct ChatView: View {
         .onChange(of: scenePhase) { _, phase in
             handleScenePhase(phase)
         }
+    }
+
+    private func openBenchmark() {
+        benchmark = viewModel.makeBenchmarkViewModel()
     }
 
     private func handleAppear() {

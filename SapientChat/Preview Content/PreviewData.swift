@@ -18,12 +18,40 @@ nonisolated extension PhoneModel {
     ]
 }
 
+nonisolated extension BenchmarkRunResult {
+    static let samples: [BenchmarkRunResult] = [
+        BenchmarkRunResult(index: 1, isWarmup: true, ttftMs: 410, elapsedMs: 5_200, tokens: 128,
+                           decodeTokensPerSecond: 24.6, prefillTokensPerSecond: 95, hitEndOfTurn: false,
+                           footprintBytes: 1_850_000_000),
+        BenchmarkRunResult(index: 1, isWarmup: false, ttftMs: 300, elapsedMs: 4_900, tokens: 128,
+                           decodeTokensPerSecond: 27.7, prefillTokensPerSecond: 130, hitEndOfTurn: false,
+                           footprintBytes: 1_860_000_000),
+        BenchmarkRunResult(index: 2, isWarmup: false, ttftMs: 290, elapsedMs: 4_800, tokens: 128,
+                           decodeTokensPerSecond: 28.4, prefillTokensPerSecond: 134, hitEndOfTurn: false,
+                           footprintBytes: 1_860_000_000),
+    ]
+}
+
+nonisolated extension BenchmarkResult {
+    static let sample = BenchmarkResult(
+        model: "smollm2-1.7b-q4", backend: "wgpu (Apple GPU (Metal))", isMemoryMapped: true,
+        contextLength: 3072, loadTimeMs: 2_300, promptTokens: 38, maxTokens: 128,
+        warmupRuns: [BenchmarkRunResult.samples[0]], runs: Array(BenchmarkRunResult.samples.dropFirst()),
+        meanTtftMs: 295, meanDecodeTokensPerSecond: 28.05, minDecodeTokensPerSecond: 27.7,
+        maxDecodeTokensPerSecond: 28.4, meanPrefillTokensPerSecond: 132, peakFootprintBytes: 1_900_000_000,
+        thermalStart: "nominal", thermalEnd: "fair", cancelled: false, engineVersion: "preview",
+        method: "preview data", isSimulator: true
+    )
+}
+
 extension ChatViewModel {
     static var preview: ChatViewModel {
         ChatViewModel(
             chatService: PreviewChatService(),
+            benchmarkService: PreviewBenchmarkService(),
             catalog: PreviewModelCatalog(),
             thermalService: PreviewThermalService(),
+            memoryService: PreviewMemoryService(),
             messages: ChatMessage.samples
         )
     }
@@ -31,8 +59,20 @@ extension ChatViewModel {
     static var emptyPreview: ChatViewModel {
         ChatViewModel(
             chatService: PreviewChatService(),
+            benchmarkService: PreviewBenchmarkService(),
             catalog: PreviewModelCatalog(),
-            thermalService: PreviewThermalService()
+            thermalService: PreviewThermalService(),
+            memoryService: PreviewMemoryService()
         )
+    }
+}
+
+extension BenchmarkViewModel {
+    static var preview: BenchmarkViewModel {
+        BenchmarkViewModel(model: "smollm2-1.7b-q4", service: PreviewBenchmarkService())
+    }
+
+    static var finishedPreview: BenchmarkViewModel {
+        BenchmarkViewModel(model: "smollm2-1.7b-q4", service: PreviewBenchmarkService(), state: .finished(.sample))
     }
 }

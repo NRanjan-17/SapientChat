@@ -36,8 +36,30 @@ actor ControlledChatService: ChatService {
 }
 
 struct FixedCatalog: ModelCatalogService {
+    static let big = PhoneModel(alias: "smollm2-1.7b", params: "1.7B", billions: 1.7)
+
     func chatModels() -> [PhoneModel] {
-        [PhoneModel(alias: PhoneModel.defaultAlias, params: "135M", billions: 0.135)]
+        [PhoneModel(alias: PhoneModel.defaultAlias, params: "135M Q4_K_M", billions: 0.135), Self.big]
+    }
+}
+
+struct FixedMemory: MemoryService {
+    var memory = MemoryStatus(footprintBytes: 200_000_000, availableBytes: 3_000_000_000)
+
+    func status() -> MemoryStatus {
+        memory
+    }
+}
+
+/// Never called by the chat tests; benchmarks have their own fake.
+struct UnusedBenchmarkService: BenchmarkService {
+    func benchmark(
+        model: String,
+        settings: BenchmarkSettings,
+        onProgress: @escaping @Sendable (BenchmarkProgress) -> Void
+    ) async throws -> BenchmarkResult {
+        Issue.record("unexpected benchmark")
+        throw CancellationError()
     }
 }
 
@@ -63,7 +85,17 @@ struct ChatViewModelTests {
     let viewModel: ChatViewModel
 
     init() {
-        viewModel = ChatViewModel(chatService: service, catalog: FixedCatalog(), thermalService: SilentThermalService())
+        viewModel = Self.makeViewModel(service: service)
+    }
+
+    static func makeViewModel(service: ControlledChatService, memory: FixedMemory = FixedMemory()) -> ChatViewModel {
+        ChatViewModel(
+            chatService: service,
+            benchmarkService: UnusedBenchmarkService(),
+            catalog: FixedCatalog(),
+            thermalService: SilentThermalService(),
+            memoryService: memory
+        )
     }
 
     private func send(_ text: String) {
@@ -117,6 +149,55 @@ struct ChatViewModelTests {
 
         #expect(await eventually { viewModel.status == .idle })
         #expect(viewModel.messages.map(\.text) == ["Hi"])
+    }
+}
+
+@MainActor
+struct MemoryFitTests {
+    @Test func refusesAModelThatCannotFitWithoutLoadingIt() async {
+        let service = ControlledChatService()
+        // 1.7B full precision needs ~2.8 GB; give the app 1.5 GB.
+        let tight = FixedMemory(memory: MemoryStatus(footprintBytes: 150_000_000, availableBytes: 1_500_000_000))
+        let viewModel = ChatViewModelTests.makeViewModel(service: service, memory: tight)
+        viewModel.selectedModel = FixedCatalog.big.alias
+        viewModel.draft = "Hi"
+
+        viewModel.send()
+
+        guard case .failed(let message) = viewModel.status else {
+            Issue.record("expected a memory error, got \(viewModel.status)")
+            return
+        }
+        #expect(message.contains("smollm2-1.7b"))
+        #expect(viewModel.messages.isEmpty)
+        #expect(viewModel.draft == "Hi", "the message is kept so the user can retry")
+        #expect(await service.loadedModels.isEmpty)
+    }
+
+    @Test func loadsWhenItFits() async {
+        let service = ControlledChatService()
+        let viewModel = ChatViewModelTests.makeViewModel(service: service)
+        viewModel.selectedModel = FixedCatalog.big.alias
+        viewModel.draft = "Hi"
+
+        viewModel.send()
+
+        #expect(await eventually { await service.loadedModels == [FixedCatalog.big.alias] })
+    }
+
+    @Test func estimatesFollowTheStorageFormat() {
+        let q4 = PhoneModel(alias: "a", params: "1.7B Q4_K_M", billions: 1.7)
+        let full = PhoneModel(alias: "b", params: "1.7B", billions: 1.7)
+        // 1.7e9 × bytes per parameter + 0.6 GB; compared loosely (floating point).
+        #expect(q4.estimatedMemoryBytes.distance(to: 1_620_000_000).magnitude < 1_000)
+        #expect(full.estimatedMemoryBytes.distance(to: 2_810_000_000).magnitude < 1_000)
+    }
+
+    @Test func memoryFreedByTheCurrentModelCounts() {
+        let full = PhoneModel(alias: "b", params: "1.7B", billions: 1.7)
+        #expect(full.fitProblem(availableBytes: 2_000_000_000) != nil)
+        #expect(full.fitProblem(availableBytes: 2_000_000_000, reclaimableBytes: 900_000_000) == nil)
+        #expect(full.fitProblem(availableBytes: nil) == nil, "no known limit, e.g. the simulator")
     }
 }
 

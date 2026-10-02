@@ -8,7 +8,8 @@ struct ModelPickerView: View {
     var body: some View {
         Picker("Model", systemImage: "cpu", selection: $selection) {
             ForEach(models) { model in
-                Text("\(model.alias) (\(model.params))").tag(model.alias)
+                Text("\(model.alias) (\(model.params), ≈\(ChatViewModel.format(bytes: model.estimatedMemoryBytes)))")
+                    .tag(model.alias)
             }
         }
         .pickerStyle(.menu)
