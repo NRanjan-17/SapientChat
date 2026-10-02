@@ -1,8 +1,8 @@
 import Foundation
 
-/// One bubble in the transcript.
+/// One bubble in the transcript (a value copy of a `StoredMessage`).
 nonisolated struct ChatMessage: Identifiable, Equatable, Sendable {
-    enum Role: Sendable {
+    enum Role: String, Sendable {
         case user
         case assistant
     }

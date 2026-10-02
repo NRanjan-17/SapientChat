@@ -6,8 +6,14 @@ nonisolated struct PreviewChatService: ChatService {
         "preview"
     }
 
-    func reply(to prompt: String) async throws -> AsyncThrowingStream<String, any Error> {
-        let words = "This is a canned preview reply, streamed one word at a time.".split(separator: " ")
+    func loadedModel() async -> String? {
+        nil
+    }
+
+    func unload() async {}
+
+    func reply(to history: [ChatMessage]) async throws -> AsyncThrowingStream<String, any Error> {
+        let words = "This is a canned **preview** reply, streamed one word at a time.".split(separator: " ")
         let (stream, continuation) = AsyncThrowingStream<String, any Error>.makeStream()
         let task = Task {
             for word in words {
@@ -19,6 +25,4 @@ nonisolated struct PreviewChatService: ChatService {
         continuation.onTermination = { _ in task.cancel() }
         return stream
     }
-
-    func reset() async {}
 }

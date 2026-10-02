@@ -1,61 +1,48 @@
 import Foundation
 import Observation
 
-/// State and actions for the chat screen. Main-actor isolated (the target
-/// default). Talks to the engine only through the injected services.
+/// State and actions for one conversation. Main-actor isolated (the target
+/// default). The transcript lives in SwiftData; `messages` mirrors it so a
+/// streaming reply can update the UI on every token without hitting disk.
 @Observable
 final class ChatViewModel {
-    private(set) var messages: [ChatMessage] = []
+    let conversation: Conversation
+    private(set) var messages: [ChatMessage]
     private(set) var status: ChatStatus = .idle
     private(set) var backendLabel: String?
-    private(set) var thermalPressure: ThermalPressure = .nominal
-    private(set) var memory = MemoryStatus.unknown
-    let availableModels: [PhoneModel]
-    var selectedModel = PhoneModel.defaultAlias
     var draft = ""
 
-    @ObservationIgnored private let chatService: any ChatService
-    @ObservationIgnored private let benchmarkService: any BenchmarkService
-    @ObservationIgnored private let thermalService: any ThermalService
-    @ObservationIgnored private let memoryService: any MemoryService
-    @ObservationIgnored private var loadedModel: String?
-    /// The reply being produced; Stop and Clear cancel it.
+    @ObservationIgnored private let services: AppServices
+    @ObservationIgnored private let store: any ConversationStore
+    /// Shared app-wide state (memory, thermal) owned by the chat list.
+    @ObservationIgnored private let device: DeviceStatus
     @ObservationIgnored private var replyTask: Task<Void, Never>?
-    /// The reply bubble of the current turn. A turn whose bubble is no
-    /// longer current (after Clear) never writes to the UI again.
+    /// The stored reply of the turn in flight; Clear/Stop compare against it.
     @ObservationIgnored private var currentReplyID: UUID?
-    /// Tail of a serial chain: turns and resets run one after another, so a
-    /// Clear's history reset never races a reply that is still finishing.
-    @ObservationIgnored private var lastOperation: Task<Void, Never>?
+    /// How often a streaming reply is written to disk.
+    @ObservationIgnored private let saveInterval: Duration
 
     init(
-        chatService: any ChatService,
-        benchmarkService: any BenchmarkService,
-        catalog: any ModelCatalogService,
-        thermalService: any ThermalService,
-        memoryService: any MemoryService,
-        messages: [ChatMessage] = []
+        conversation: Conversation,
+        services: AppServices,
+        store: any ConversationStore,
+        device: DeviceStatus,
+        saveInterval: Duration = .seconds(1)
     ) {
-        self.messages = messages
-        self.chatService = chatService
-        self.benchmarkService = benchmarkService
-        self.thermalService = thermalService
-        self.memoryService = memoryService
-        availableModels = catalog.chatModels()
-        memory = memoryService.status()
+        self.conversation = conversation
+        self.services = services
+        self.store = store
+        self.device = device
+        self.saveInterval = saveInterval
+        messages = conversation.orderedMessages.map(\.chatMessage)
     }
 
-    /// The app's real wiring: chat and benchmark share ONE engine, so only
-    /// one model is ever in memory.
-    static func live() -> ChatViewModel {
-        let engine = SapientChatService()
-        return ChatViewModel(
-            chatService: engine,
-            benchmarkService: engine,
-            catalog: SapientModelCatalog(),
-            thermalService: SapientThermalService(),
-            memoryService: SapientMemoryService()
-        )
+    var model: PhoneModel? {
+        services.catalog.chatModels().first { $0.alias == conversation.modelAlias }
+    }
+
+    var modelName: String {
+        model?.displayName ?? conversation.modelAlias
     }
 
     var isBusy: Bool {
@@ -71,14 +58,18 @@ final class ChatViewModel {
         !isBusy && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    var canClear: Bool { !isBusy && !messages.isEmpty }
+    /// Regenerate the last reply, or retry when the last message got no reply.
+    var canRegenerate: Bool {
+        !isBusy && !messages.isEmpty
+    }
 
     var statusText: String {
-        let thermal = thermalPressure.label.map { " · \($0)" } ?? ""
-        let used = memory.footprintBytes.map { " · \(Self.format(bytes: $0)) used" } ?? ""
+        let thermal = device.thermal.label.map { " · \($0)" } ?? ""
         return switch status {
-        case .idle: "On-device" + (backendLabel.map { " · \($0)" } ?? "") + used + thermal
-        case .loading(let model): "Loading \(model). The first run downloads it…"
+        case .idle:
+            [modelName, backendLabel, device.memory.footprintBytes.map { "\(Format.bytes($0)) used" }]
+                .compactMap { $0 }.joined(separator: " · ") + thermal
+        case .loading(let model): "Loading \(model). The first time downloads it…"
         case .generating: "Generating…" + thermal
         case .failed(let message): "Error: \(message)"
         }
@@ -89,68 +80,44 @@ final class ChatViewModel {
     func send() {
         let prompt = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !isBusy else { return }
-        let model = selectedModel
-        let needsLoad = loadedModel != model
-        // Refuse a model that can't fit instead of letting iOS kill the app.
-        if needsLoad, let problem = memoryProblem(loading: model) {
-            status = .failed(problem)
-            return
-        }
         draft = ""
-
-        messages.append(ChatMessage(role: .user, text: prompt))
-        let reply = ChatMessage(role: .assistant, text: "")
-        messages.append(reply)
-        currentReplyID = reply.id
-        status = needsLoad ? .loading(model: model) : .generating
-
-        replyTask = enqueue { [weak self] in
-            await self?.runTurn(prompt: prompt, replyID: reply.id, model: model, needsLoad: needsLoad)
+        if conversation.title == Conversation.untitled {
+            conversation.title = Self.title(from: prompt)
         }
+        let user = store.append(.user, text: prompt, to: conversation)
+        messages.append(user.chatMessage)
+        startReply()
     }
 
-    /// The benchmark screen for the selected model, on the shared engine.
-    func makeBenchmarkViewModel() -> BenchmarkViewModel {
-        let model = selectedModel
-        return BenchmarkViewModel(model: model, service: benchmarkService) { [weak self] succeeded in
-            // A successful benchmark leaves `model` loaded; after a failure
-            // nothing is known, so the next message reloads (a no-op in the
-            // service if the model is in fact still loaded).
-            self?.loadedModel = succeeded ? model : nil
-            self?.refreshMemory()
+    /// Replaces the last reply with a new one, or answers the last message
+    /// if it never got a reply (e.g. the model failed to load).
+    func regenerate() {
+        guard canRegenerate else { return }
+        if let last = conversation.orderedMessages.last, last.role == ChatMessage.Role.assistant.rawValue {
+            store.remove(last, from: conversation)
+            messages.removeLast()
         }
+        startReply()
     }
 
-    /// Why `alias` can't be loaded right now, or nil if it should fit. The
-    /// current model is released first, so its footprint counts as free.
-    func memoryProblem(loading alias: String) -> String? {
-        guard let model = availableModels.first(where: { $0.alias == alias }) else { return nil }
-        memory = memoryService.status()
-        let reclaimable = loadedModel == nil ? 0 : memory.footprintBytes ?? 0
-        return model.fitProblem(availableBytes: memory.availableBytes, reclaimableBytes: reclaimable)
-    }
-
-    func refreshMemory() {
-        memory = memoryService.status()
-    }
-
-    static func format(bytes: UInt64) -> String {
-        Int64(clamping: bytes).formatted(.byteCount(style: .memory))
-    }
-
-    /// Stops the current reply; the partial text stays.
+    /// Stops the current reply; the partial text stays and is saved.
     func stop() {
         replyTask?.cancel()
     }
 
-    func clearConversation() {
-        replyTask?.cancel()
-        replyTask = nil
-        currentReplyID = nil
-        messages.removeAll()
-        status = .idle
-        let chatService = chatService
-        enqueue { await chatService.reset() }
+    /// Changes this chat's model; it loads with the next message.
+    func selectModel(_ alias: String) {
+        guard !isBusy, alias != conversation.modelAlias else { return }
+        conversation.modelAlias = alias
+        store.touch(conversation)
+        backendLabel = nil
+    }
+
+    /// The benchmark screen for this chat's model, on the shared engine.
+    func makeBenchmarkViewModel() -> BenchmarkViewModel {
+        BenchmarkViewModel(model: conversation.modelAlias, service: services.benchmark) { [device] _ in
+            device.refreshMemory()
+        }
     }
 
     /// iOS forbids GPU work in the background and gives background CPU only
@@ -159,71 +126,84 @@ final class ChatViewModel {
         stop()
     }
 
-    /// Test hook: launching with `-autosend "<prompt>"` sends one message.
-    func handleLaunchArguments(_ arguments: [String]) {
-        guard let flag = arguments.firstIndex(of: "-autosend"), arguments.indices.contains(flag + 1) else { return }
-        draft = arguments[flag + 1]
-        send()
-    }
-
-    /// Mirrors the device's thermal state until the calling task is cancelled.
-    func observeThermalPressure() async {
-        for await pressure in thermalService.pressureUpdates() {
-            thermalPressure = pressure
-        }
-    }
-
     // MARK: Turn handling
 
-    @discardableResult
-    private func enqueue(_ operation: @escaping () async -> Void) -> Task<Void, Never> {
-        let previous = lastOperation
-        let task = Task {
-            await previous?.value
-            await operation()
+    private func startReply() {
+        let history = messages
+        let modelAlias = conversation.modelAlias
+        let reply = store.append(.assistant, text: "", to: conversation)
+        messages.append(reply.chatMessage)
+        currentReplyID = reply.id
+        status = .loading(model: model?.displayName ?? modelAlias)
+        replyTask = Task { [weak self] in
+            await self?.runTurn(history: history, modelAlias: modelAlias, reply: reply)
         }
-        lastOperation = task
-        return task
     }
 
-    private func runTurn(prompt: String, replyID: UUID, model: String, needsLoad: Bool) async {
+    private func runTurn(history: [ChatMessage], modelAlias: String, reply: StoredMessage) async {
         do {
-            if needsLoad {
-                backendLabel = try await chatService.load(model: model)
-                loadedModel = model
-                refreshMemory()
+            if await services.chat.loadedModel() != modelAlias {
+                // Refuse a model that can't fit instead of letting iOS kill the app.
+                if let problem = await device.memoryProblem(loading: model, chat: services.chat) {
+                    throw ChatViewModelError.wontFit(problem)
+                }
+                backendLabel = try await services.chat.load(model: modelAlias)
+                device.refreshMemory()
+            } else if backendLabel == nil {
+                backendLabel = try await services.chat.load(model: modelAlias)
             }
             try Task.checkCancellation()
-            guard currentReplyID == replyID else { return }
+            guard currentReplyID == reply.id else { return }
             status = .generating
 
-            for try await token in try await chatService.reply(to: prompt) {
-                guard currentReplyID == replyID else { return }
-                append(token, to: replyID)
+            var lastSave = ContinuousClock.now
+            for try await token in try await services.chat.reply(to: history) {
+                guard currentReplyID == reply.id else { return }
+                append(token, to: reply)
+                if ContinuousClock.now - lastSave >= saveInterval {
+                    store.save()
+                    lastSave = .now
+                }
             }
-            finishTurn(replyID: replyID, error: nil)
+            finishTurn(reply: reply, error: nil)
         } catch {
-            finishTurn(replyID: replyID, error: error)
+            finishTurn(reply: reply, error: error)
         }
     }
 
-    private func append(_ token: String, to replyID: UUID) {
-        guard let index = messages.firstIndex(where: { $0.id == replyID }) else { return }
-        messages[index].text += token
+    private func append(_ token: String, to reply: StoredMessage) {
+        reply.text += token
+        if let index = messages.lastIndex(where: { $0.id == reply.id }) {
+            messages[index].text += token
+        }
     }
 
-    private func finishTurn(replyID: UUID, error: (any Error)?) {
-        guard currentReplyID == replyID else { return }
-        refreshMemory()
+    private func finishTurn(reply: StoredMessage, error: (any Error)?) {
+        guard currentReplyID == reply.id else { return }
+        currentReplyID = nil
         // A reply stopped or failed before its first token leaves no bubble.
-        if let index = messages.firstIndex(where: { $0.id == replyID }), messages[index].text.isEmpty {
-            messages.remove(at: index)
+        if reply.text.isEmpty {
+            messages.removeAll { $0.id == reply.id }
+            store.remove(reply, from: conversation)
+        } else {
+            store.touch(conversation)
         }
+        device.refreshMemory()
         if let error, !(error is CancellationError) {
-            // SapientError isn't a LocalizedError; its description carries the reason.
-            status = .failed(String(describing: error))
+            if case ChatViewModelError.wontFit(let message) = error {
+                status = .failed(message)
+            } else {
+                // SapientError isn't a LocalizedError; its description carries the reason.
+                status = .failed(String(describing: error))
+            }
         } else {
             status = .idle
         }
+    }
+
+    /// The first line of `prompt`, shortened to a chat title.
+    static func title(from prompt: String) -> String {
+        let firstLine = prompt.split(whereSeparator: \.isNewline).first.map(String.init) ?? prompt
+        return firstLine.count > 40 ? String(firstLine.prefix(40)) + "…" : firstLine
     }
 }

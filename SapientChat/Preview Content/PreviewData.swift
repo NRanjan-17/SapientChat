@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 // Self-contained sample data for SwiftUI previews.
 
@@ -12,9 +13,9 @@ nonisolated extension ChatMessage {
 
 nonisolated extension PhoneModel {
     static let samples: [PhoneModel] = [
-        PhoneModel(alias: "smollm2-135m-q4", params: "135M Q4_K_M", billions: 0.135),
-        PhoneModel(alias: "qwen2.5-0.5b-q4", params: "0.5B Q4_K_M", billions: 0.5),
-        PhoneModel(alias: "llama3.2-1b-q4", params: "1B Q4_K_M", billions: 1),
+        PhoneModel(alias: "openhorizon/smollm2-135m-q4", repoId: "unsloth/SmolLM2-135M-Instruct-GGUF", params: "135M Q4_K_M", billions: 0.135),
+        PhoneModel(alias: "openhorizon/qwen2.5-0.5b-q4", repoId: "Qwen/Qwen2.5-0.5B-Instruct-GGUF", params: "0.5B Q4_K_M", billions: 0.5),
+        PhoneModel(alias: "openhorizon/smollm2-1.7b", repoId: "HuggingFaceTB/SmolLM2-1.7B-Instruct", params: "1.7B", billions: 1.7),
     ]
 }
 
@@ -44,25 +45,68 @@ nonisolated extension BenchmarkResult {
     )
 }
 
-extension ChatViewModel {
-    static var preview: ChatViewModel {
-        ChatViewModel(
-            chatService: PreviewChatService(),
-            benchmarkService: PreviewBenchmarkService(),
+extension AppServices {
+    static var preview: AppServices {
+        AppServices(
+            chat: PreviewChatService(),
+            benchmark: PreviewBenchmarkService(),
             catalog: PreviewModelCatalog(),
-            thermalService: PreviewThermalService(),
-            memoryService: PreviewMemoryService(),
-            messages: ChatMessage.samples
+            thermal: PreviewThermalService(),
+            memory: PreviewMemoryService(),
+            storage: PreviewModelStorage()
         )
     }
+}
 
-    static var emptyPreview: ChatViewModel {
-        ChatViewModel(
-            chatService: PreviewChatService(),
-            benchmarkService: PreviewBenchmarkService(),
-            catalog: PreviewModelCatalog(),
-            thermalService: PreviewThermalService(),
-            memoryService: PreviewMemoryService()
+/// An in-memory SwiftData store with two sample chats.
+@MainActor
+enum PreviewStore {
+    static let container: ModelContainer = {
+        do {
+            return try ModelContainer(
+                for: Conversation.self, StoredMessage.self,
+                configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            )
+        } catch {
+            fatalError("Preview store: \(error)")
+        }
+    }()
+
+    static let store: SwiftDataConversationStore = {
+        let store = SwiftDataConversationStore(context: container.mainContext)
+        let chat = store.createConversation(model: PhoneModel.samples[0].alias)
+        chat.title = "Offline AI"
+        for message in ChatMessage.samples {
+            store.append(message.role, text: message.text, to: chat)
+        }
+        _ = store.createConversation(model: PhoneModel.samples[2].alias)
+        return store
+    }()
+}
+
+extension ChatListViewModel {
+    static var preview: ChatListViewModel {
+        ChatListViewModel(services: .preview, store: PreviewStore.store)
+    }
+}
+
+extension ModelSelectorViewModel {
+    static var preview: ModelSelectorViewModel {
+        ModelSelectorViewModel(
+            selected: PhoneModel.samples[0].alias,
+            services: .preview,
+            device: DeviceStatus(memoryService: PreviewMemoryService(), thermalService: PreviewThermalService()),
+            onSelect: { _ in }
+        )
+    }
+}
+
+extension CompareViewModel {
+    static var preview: CompareViewModel {
+        CompareViewModel(
+            services: .preview,
+            device: DeviceStatus(memoryService: PreviewMemoryService(), thermalService: PreviewThermalService()),
+            initialModel: PhoneModel.samples[0].alias
         )
     }
 }

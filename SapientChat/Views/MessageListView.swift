@@ -4,30 +4,33 @@ import SwiftUI
 /// reply streams in.
 struct MessageListView: View {
     let messages: [ChatMessage]
+    let canRegenerate: Bool
+    let onRegenerate: () -> Void
 
     var body: some View {
-        if messages.isEmpty {
-            ContentUnavailableView(
-                "Start a conversation",
-                systemImage: "bubble.left.and.text.bubble.right",
-                description: Text("Replies are generated on this device. The first message downloads the selected model.")
-            )
-        } else {
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    ForEach(messages) { message in
-                        MessageBubble(message: message)
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(messages) { message in
+                    if message.role == .assistant && message.text.isEmpty {
+                        TypingIndicator()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        MessageBubble(
+                            message: message,
+                            canRegenerate: canRegenerate && message.id == messages.last?.id,
+                            onRegenerate: onRegenerate
+                        )
                     }
                 }
-                .padding()
             }
-            .defaultScrollAnchor(.bottom)
-            .defaultScrollAnchor(.bottom, for: .sizeChanges)
-            .scrollDismissesKeyboard(.interactively)
+            .padding()
         }
+        .defaultScrollAnchor(.bottom)
+        .defaultScrollAnchor(.bottom, for: .sizeChanges)
+        .scrollDismissesKeyboard(.interactively)
     }
 }
 
 #Preview {
-    MessageListView(messages: ChatMessage.samples)
+    MessageListView(messages: ChatMessage.samples, canRegenerate: true, onRegenerate: {})
 }

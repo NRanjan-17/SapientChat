@@ -1,69 +1,66 @@
 import SwiftUI
 
-/// The chat screen. Layout only; all state and logic live in `ChatViewModel`.
+/// One conversation. Layout only; state and logic live in `ChatViewModel`.
 struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
+    let list: ChatListViewModel
     @State private var benchmark: BenchmarkViewModel?
-    @Environment(\.scenePhase) private var scenePhase
+    @State private var modelSelector: ModelSelectorViewModel?
 
     var body: some View {
-        NavigationStack {
-            MessageListView(messages: viewModel.messages)
-                .safeAreaInset(edge: .bottom) {
-                    ChatInputBar(
-                        draft: $viewModel.draft,
-                        isBusy: viewModel.isBusy,
-                        isGenerating: viewModel.isGenerating,
-                        canSend: viewModel.canSend,
-                        onSend: viewModel.send,
-                        onStop: viewModel.stop
-                    )
-                }
-                .navigationTitle("Sapient Chat")
-                .navigationSubtitle(viewModel.statusText)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        ModelPickerView(models: viewModel.availableModels, selection: $viewModel.selectedModel)
-                            .disabled(viewModel.isBusy)
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Benchmark", systemImage: "gauge.with.dots.needle.67percent", action: openBenchmark)
-                            .disabled(viewModel.isBusy)
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Clear", systemImage: "trash", action: viewModel.clearConversation)
-                            .disabled(!viewModel.canClear)
-                    }
-                }
-                .sheet(item: $benchmark) { benchmark in
-                    BenchmarkView(viewModel: benchmark)
-                }
+        Group {
+            if viewModel.messages.isEmpty {
+                EmptyChatView(modelName: viewModel.modelName, onSuggestion: sendSuggestion)
+            } else {
+                MessageListView(
+                    messages: viewModel.messages,
+                    canRegenerate: viewModel.canRegenerate,
+                    onRegenerate: viewModel.regenerate
+                )
+            }
         }
-        .task { await viewModel.observeThermalPressure() }
-        .onAppear(perform: handleAppear)
-        .onChange(of: scenePhase) { _, phase in
-            handleScenePhase(phase)
+        .safeAreaInset(edge: .bottom) {
+            ChatInputBar(
+                draft: $viewModel.draft,
+                isBusy: viewModel.isBusy,
+                isGenerating: viewModel.isGenerating,
+                canSend: viewModel.canSend,
+                onSend: viewModel.send,
+                onStop: viewModel.stop
+            )
         }
+        .navigationTitle(viewModel.conversation.title)
+        .navigationSubtitle(viewModel.statusText)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(viewModel.modelName, systemImage: "cpu", action: openModelSelector)
+                    .labelStyle(.titleAndIcon)
+                    .disabled(viewModel.isBusy)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Benchmark", systemImage: "gauge.with.dots.needle.67percent", action: openBenchmark)
+                    .disabled(viewModel.isBusy)
+            }
+        }
+        .sheet(item: $benchmark) { benchmark in
+            BenchmarkView(viewModel: benchmark)
+        }
+        .sheet(item: $modelSelector) { selector in
+            ModelSelectorView(viewModel: selector)
+        }
+    }
+
+    private func sendSuggestion(_ text: String) {
+        viewModel.draft = text
+        viewModel.send()
     }
 
     private func openBenchmark() {
         benchmark = viewModel.makeBenchmarkViewModel()
     }
 
-    private func handleAppear() {
-        viewModel.handleLaunchArguments(ProcessInfo.processInfo.arguments)
+    private func openModelSelector() {
+        modelSelector = list.makeModelSelector(for: viewModel)
     }
-
-    private func handleScenePhase(_ phase: ScenePhase) {
-        if phase != .active { viewModel.appDidLeaveForeground() }
-    }
-}
-
-#Preview("Conversation") {
-    ChatView(viewModel: .preview)
-}
-
-#Preview("Empty") {
-    ChatView(viewModel: .emptyPreview)
 }

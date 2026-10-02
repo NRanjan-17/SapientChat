@@ -19,7 +19,7 @@ struct BenchmarkResultsSection: View {
                 Text("\(result.meanPrefillTokensPerSecond, format: rate) tok/s")
             }
             if let peak = result.peakFootprintBytes {
-                LabeledContent("Peak memory", value: ChatViewModel.format(bytes: peak))
+                LabeledContent("Peak memory", value: Format.bytes(peak))
             }
         } header: {
             Text(result.cancelled ? "Results (cancelled early)" : "Results")

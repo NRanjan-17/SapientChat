@@ -27,7 +27,7 @@ struct BenchmarkRunRow: View {
     private var details: String {
         var parts = ["TTFT \(run.ttftMs) ms", "\(run.tokens) tokens"]
         if run.hitEndOfTurn { parts.append("stopped early") }
-        if let bytes = run.footprintBytes { parts.append(ChatViewModel.format(bytes: bytes)) }
+        if let bytes = run.footprintBytes { parts.append(Format.bytes(bytes)) }
         return parts.joined(separator: " · ")
     }
 }

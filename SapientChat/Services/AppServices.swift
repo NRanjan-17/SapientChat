@@ -1,0 +1,23 @@
+/// Every service the ViewModels use, injected as one bundle so tests and
+/// previews can swap in fakes. `live()` wires ONE engine for chat,
+/// benchmark and compare, so only one model is ever in memory.
+struct AppServices {
+    let chat: any ChatService
+    let benchmark: any BenchmarkService
+    let catalog: any ModelCatalogService
+    let thermal: any ThermalService
+    let memory: any MemoryService
+    let storage: any ModelStorageService
+
+    static func live() -> AppServices {
+        let engine = SapientChatService()
+        return AppServices(
+            chat: engine,
+            benchmark: engine,
+            catalog: SapientModelCatalog(),
+            thermal: SapientThermalService(),
+            memory: SapientMemoryService(),
+            storage: HubModelStorage.appDefault
+        )
+    }
+}

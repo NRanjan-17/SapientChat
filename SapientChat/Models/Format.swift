@@ -1,0 +1,14 @@
+import Foundation
+
+/// Shared display formatting.
+nonisolated enum Format {
+    /// "2.8 GB"-style memory size.
+    static func bytes(_ bytes: UInt64) -> String {
+        Int64(clamping: bytes).formatted(.byteCount(style: .memory))
+    }
+
+    /// "27.4"-style rate.
+    static func rate(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(1)))
+    }
+}

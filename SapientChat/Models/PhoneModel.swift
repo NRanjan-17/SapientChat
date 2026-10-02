@@ -3,6 +3,8 @@ import Foundation
 /// A chat model the app offers.
 nonisolated struct PhoneModel: Identifiable, Hashable, Sendable {
     let alias: String
+    /// Hugging Face repository the files are downloaded from.
+    let repoId: String
     /// Catalog size string for display, e.g. "135M Q4_K_M".
     let params: String
     /// Parameter count in billions, parsed from `params`.
@@ -10,8 +12,24 @@ nonisolated struct PhoneModel: Identifiable, Hashable, Sendable {
 
     var id: String { alias }
 
+    /// The alias without the catalog's `openhorizon/` prefix, for display.
+    var displayName: String {
+        alias.split(separator: "/").last.map(String.init) ?? alias
+    }
+
+    /// Storage format shown to the user.
+    var format: String {
+        if params.contains("Q4") {
+            "4-bit"
+        } else if params.contains("Q8") {
+            "8-bit"
+        } else {
+            "Full precision"
+        }
+    }
+
     /// ~100 MB: the fastest way to check the whole pipeline works.
-    static let defaultAlias = "smollm2-135m-q4"
+    static let defaultAlias = "openhorizon/smollm2-135m-q4"
 
     /// Rough memory the loaded model needs, in bytes: weights as they sit in
     /// memory plus ~0.6 GB for the KV cache and runtime. Weights per

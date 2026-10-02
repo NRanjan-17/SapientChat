@@ -1,200 +1,154 @@
 import Foundation
+import SwiftData
 import Testing
 @testable import SapientChat
 
-/// A `ChatService` the test drives by hand: each reply's tokens are pushed
-/// explicitly, so the test controls exactly when they arrive.
-actor ControlledChatService: ChatService {
-    private(set) var loadedModels: [String] = []
-    private(set) var resetCount = 0
-    private var replies: [AsyncThrowingStream<String, any Error>.Continuation] = []
-
-    var replyCount: Int { replies.count }
-
-    func load(model: String) async throws -> String {
-        loadedModels.append(model)
-        return "test-backend"
-    }
-
-    func reply(to prompt: String) async throws -> AsyncThrowingStream<String, any Error> {
-        let (stream, continuation) = AsyncThrowingStream<String, any Error>.makeStream()
-        replies.append(continuation)
-        return stream
-    }
-
-    func reset() async {
-        resetCount += 1
-    }
-
-    func send(_ token: String, toReply index: Int) {
-        replies[index].yield(token)
-    }
-
-    func finishReply(_ index: Int) {
-        replies[index].finish()
-    }
-}
-
-struct FixedCatalog: ModelCatalogService {
-    static let big = PhoneModel(alias: "smollm2-1.7b", params: "1.7B", billions: 1.7)
-
-    func chatModels() -> [PhoneModel] {
-        [PhoneModel(alias: PhoneModel.defaultAlias, params: "135M Q4_K_M", billions: 0.135), Self.big]
-    }
-}
-
-struct FixedMemory: MemoryService {
-    var memory = MemoryStatus(footprintBytes: 200_000_000, availableBytes: 3_000_000_000)
-
-    func status() -> MemoryStatus {
-        memory
-    }
-}
-
-/// Never called by the chat tests; benchmarks have their own fake.
-struct UnusedBenchmarkService: BenchmarkService {
-    func benchmark(
-        model: String,
-        settings: BenchmarkSettings,
-        onProgress: @escaping @Sendable (BenchmarkProgress) -> Void
-    ) async throws -> BenchmarkResult {
-        Issue.record("unexpected benchmark")
-        throw CancellationError()
-    }
-}
-
-struct SilentThermalService: ThermalService {
-    func pressureUpdates() -> AsyncStream<ThermalPressure> {
-        AsyncStream { $0.finish() }
-    }
-}
-
-/// Polls `condition` until it holds or about two seconds pass.
-@MainActor
-func eventually(_ condition: () async -> Bool) async -> Bool {
-    for _ in 0..<200 {
-        if await condition() { return true }
-        try? await Task.sleep(for: .milliseconds(10))
-    }
-    return false
-}
-
 @MainActor
 struct ChatViewModelTests {
+    let container: ModelContainer
+    let store: SwiftDataConversationStore
     let service = ControlledChatService()
-    let viewModel: ChatViewModel
 
-    init() {
-        viewModel = Self.makeViewModel(service: service)
+    init() throws {
+        container = try makeContainer()
+        store = SwiftDataConversationStore(context: container.mainContext)
     }
 
-    static func makeViewModel(service: ControlledChatService, memory: FixedMemory = FixedMemory()) -> ChatViewModel {
-        ChatViewModel(
-            chatService: service,
-            benchmarkService: UnusedBenchmarkService(),
-            catalog: FixedCatalog(),
-            thermalService: SilentThermalService(),
-            memoryService: memory
-        )
+    private func makeChat(
+        model: PhoneModel = TestModels.small,
+        memory: FixedMemory = FixedMemory(),
+        saveInterval: Duration = .seconds(60)
+    ) -> ChatViewModel {
+        let services = makeServices(chat: service, memory: memory)
+        let conversation = store.createConversation(model: model.alias)
+        let device = DeviceStatus(memoryService: memory, thermalService: SilentThermalService())
+        return ChatViewModel(conversation: conversation, services: services, store: store, device: device, saveInterval: saveInterval)
     }
 
-    private func send(_ text: String) {
-        viewModel.draft = text
-        viewModel.send()
+    private func send(_ text: String, in chat: ChatViewModel) {
+        chat.draft = text
+        chat.send()
     }
 
-    @Test func streamsTokensIntoTheReply() async {
-        send("Hi")
+    /// What a fresh context on the same container sees: only saved data.
+    private func savedTexts() throws -> [String] {
+        let fresh = ModelContext(container)
+        let chats = try fresh.fetch(FetchDescriptor<Conversation>())
+        return chats.first?.orderedMessages.map(\.text) ?? []
+    }
+
+    @Test func streamsTheReplyAndSavesTheTurn() async throws {
+        let chat = makeChat()
+        send("Hi there", in: chat)
         #expect(await eventually { await service.replyCount == 1 })
 
         await service.send("Hel", toReply: 0)
         await service.send("lo", toReply: 0)
         await service.finishReply(0)
 
-        #expect(await eventually { viewModel.status == .idle })
-        #expect(viewModel.messages.map(\.text) == ["Hi", "Hello"])
-        #expect(viewModel.backendLabel == "test-backend")
-        #expect(await service.loadedModels == [PhoneModel.defaultAlias])
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["Hi there", "Hello"])
+        #expect(try savedTexts() == ["Hi there", "Hello"])
+        #expect(chat.conversation.title == "Hi there", "the first message names the chat")
+        #expect(chat.backendLabel == "test-backend")
     }
 
-    @Test func clearDuringReplyDropsLateTokens() async {
-        send("First")
+    @Test func everyTurnSendsTheWholeHistory() async {
+        let chat = makeChat()
+        send("First", in: chat)
+        #expect(await eventually { await service.replyCount == 1 })
+        await service.send("One", toReply: 0)
+        await service.finishReply(0)
+        #expect(await eventually { chat.status == .idle })
+
+        send("Second", in: chat)
+        #expect(await eventually { await service.replyCount == 2 })
+        let histories = await service.histories
+        #expect(histories[1].map(\.text) == ["First", "One", "Second"])
+        #expect(histories[1].map(\.role) == [.user, .assistant, .user])
+        // The model is loaded once and reused.
+        #expect(await service.loadedModels == [TestModels.small.alias])
+    }
+
+    @Test func aStreamingReplyIsSavedWhileItArrives() async throws {
+        let chat = makeChat(saveInterval: .zero)
+        send("Hi", in: chat)
+        #expect(await eventually { await service.replyCount == 1 })
+        await service.send("Partial", toReply: 0)
+
+        // Not finished yet, but already on disk: a crash now keeps it.
+        #expect(await eventually { (try? savedTexts()) == ["Hi", "Partial"] })
+    }
+
+    @Test func stopBeforeTheFirstTokenLeavesNoEmptyReply() async throws {
+        let chat = makeChat()
+        send("Hi", in: chat)
+        #expect(await eventually { chat.status == .generating })
+
+        chat.stop()
+
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["Hi"])
+        #expect(try savedTexts() == ["Hi"])
+    }
+
+    @Test func refusesAModelThatCannotFitAndKeepsTheMessageForRetry() async throws {
+        let chat = makeChat(model: TestModels.big, memory: tightMemory)
+        send("Hi", in: chat)
+
+        #expect(await eventually {
+            if case .failed(let message) = chat.status { message.contains("smollm2-1.7b") } else { false }
+        })
+        #expect(chat.messages.map(\.text) == ["Hi"])
+        #expect(await service.loadedModels.isEmpty, "nothing was loaded")
+        #expect(chat.canRegenerate, "the user can retry, e.g. after picking a smaller model")
+    }
+
+    @Test func regenerateReplacesTheLastReply() async throws {
+        let chat = makeChat()
+        send("Hi", in: chat)
         #expect(await eventually { await service.replyCount == 1 })
         await service.send("Old", toReply: 0)
-        #expect(await eventually { viewModel.messages.last?.text == "Old" })
+        await service.finishReply(0)
+        #expect(await eventually { chat.status == .idle })
 
-        viewModel.clearConversation()
-        #expect(viewModel.messages.isEmpty)
-
-        // A token from the cleared turn arrives late: it must not reappear.
-        await service.send(" late", toReply: 0)
-        #expect(await eventually { await service.resetCount == 1 })
-
-        send("Second")
+        chat.regenerate()
         #expect(await eventually { await service.replyCount == 2 })
         await service.send("New", toReply: 1)
         await service.finishReply(1)
 
-        #expect(await eventually { viewModel.status == .idle })
-        #expect(viewModel.messages.map(\.text) == ["Second", "New"])
-        // The model loads once; the second turn reuses it.
-        #expect(await service.loadedModels.count == 1)
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["Hi", "New"])
+        #expect(try savedTexts() == ["Hi", "New"])
+        #expect(await service.histories[1].map(\.text) == ["Hi"], "the old reply is not sent back")
     }
 
-    @Test func stopBeforeFirstTokenLeavesNoEmptyBubble() async {
-        send("Hi")
-        #expect(await eventually { viewModel.status == .generating })
+    @Test func selectingAModelIsSavedOnTheChat() {
+        let chat = makeChat()
+        chat.selectModel(TestModels.big.alias)
+        #expect(chat.conversation.modelAlias == TestModels.big.alias)
+        #expect(chat.modelName == "smollm2-1.7b")
+    }
 
-        viewModel.stop()
-
-        #expect(await eventually { viewModel.status == .idle })
-        #expect(viewModel.messages.map(\.text) == ["Hi"])
+    @Test func titlesComeFromTheFirstLineAndAreShortened() {
+        #expect(ChatViewModel.title(from: "Hello\nsecond line") == "Hello")
+        let long = String(repeating: "a", count: 60)
+        #expect(ChatViewModel.title(from: long) == String(repeating: "a", count: 40) + "…")
     }
 }
 
 @MainActor
 struct MemoryFitTests {
-    @Test func refusesAModelThatCannotFitWithoutLoadingIt() async {
-        let service = ControlledChatService()
-        // 1.7B full precision needs ~2.8 GB; give the app 1.5 GB.
-        let tight = FixedMemory(memory: MemoryStatus(footprintBytes: 150_000_000, availableBytes: 1_500_000_000))
-        let viewModel = ChatViewModelTests.makeViewModel(service: service, memory: tight)
-        viewModel.selectedModel = FixedCatalog.big.alias
-        viewModel.draft = "Hi"
-
-        viewModel.send()
-
-        guard case .failed(let message) = viewModel.status else {
-            Issue.record("expected a memory error, got \(viewModel.status)")
-            return
-        }
-        #expect(message.contains("smollm2-1.7b"))
-        #expect(viewModel.messages.isEmpty)
-        #expect(viewModel.draft == "Hi", "the message is kept so the user can retry")
-        #expect(await service.loadedModels.isEmpty)
-    }
-
-    @Test func loadsWhenItFits() async {
-        let service = ControlledChatService()
-        let viewModel = ChatViewModelTests.makeViewModel(service: service)
-        viewModel.selectedModel = FixedCatalog.big.alias
-        viewModel.draft = "Hi"
-
-        viewModel.send()
-
-        #expect(await eventually { await service.loadedModels == [FixedCatalog.big.alias] })
-    }
-
     @Test func estimatesFollowTheStorageFormat() {
-        let q4 = PhoneModel(alias: "a", params: "1.7B Q4_K_M", billions: 1.7)
-        let full = PhoneModel(alias: "b", params: "1.7B", billions: 1.7)
+        let q4 = PhoneModel(alias: "a", repoId: "a", params: "1.7B Q4_K_M", billions: 1.7)
+        let full = PhoneModel(alias: "b", repoId: "b", params: "1.7B", billions: 1.7)
         // 1.7e9 × bytes per parameter + 0.6 GB; compared loosely (floating point).
         #expect(q4.estimatedMemoryBytes.distance(to: 1_620_000_000).magnitude < 1_000)
         #expect(full.estimatedMemoryBytes.distance(to: 2_810_000_000).magnitude < 1_000)
     }
 
     @Test func memoryFreedByTheCurrentModelCounts() {
-        let full = PhoneModel(alias: "b", params: "1.7B", billions: 1.7)
+        let full = TestModels.big
         #expect(full.fitProblem(availableBytes: 2_000_000_000) != nil)
         #expect(full.fitProblem(availableBytes: 2_000_000_000, reclaimableBytes: 900_000_000) == nil)
         #expect(full.fitProblem(availableBytes: nil) == nil, "no known limit, e.g. the simulator")
@@ -214,5 +168,11 @@ struct PhoneModelTests {
     @Test(arguments: ["47B-A13B Q4_K_M", "106B-A12B", ""])
     func rejectsSizesItCannotParse(params: String) {
         #expect(PhoneModel.billions(fromParams: params) == nil)
+    }
+
+    @Test func displayNameAndFormat() {
+        #expect(TestModels.small.displayName == "smollm2-135m-q4")
+        #expect(TestModels.small.format == "4-bit")
+        #expect(TestModels.big.format == "Full precision")
     }
 }

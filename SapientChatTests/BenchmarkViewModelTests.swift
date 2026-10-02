@@ -53,7 +53,7 @@ struct BenchmarkViewModelTests {
     let service = ControlledBenchmarkService()
 
     private func makeViewModel(onFinish: @escaping (Bool) -> Void = { _ in }) -> BenchmarkViewModel {
-        let viewModel = BenchmarkViewModel(model: "smollm2-1.7b", service: service, onFinish: onFinish)
+        let viewModel = BenchmarkViewModel(model: TestModels.big.alias, service: service, onFinish: onFinish)
         viewModel.settings.runs = 2
         viewModel.settings.warmup = 0
         return viewModel

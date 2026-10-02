@@ -563,7 +563,7 @@
 /* Begin XCLocalSwiftPackageReference section */
 		E23B08E1307006CB00D68255 /* XCLocalSwiftPackageReference "../GitHub/sapient/dist/mobile/sapient-swift" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../GitHub/sapient/dist/mobile/sapient-swift;
+			relativePath = "../GitHub/sapient/dist/mobile/sapient-swift";
 		};
 /* End XCLocalSwiftPackageReference section */
 
