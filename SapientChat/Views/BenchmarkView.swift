@@ -38,7 +38,13 @@ struct BenchmarkView: View {
                 }
                 if let result = viewModel.result {
                     ToolbarItem(placement: .topBarLeading) {
-                        ShareLink(item: result.jsonText(), preview: SharePreview("Benchmark results"))
+                        ReportShareMenu(
+                            title: "Share",
+                            fileName: PDFExporter.fileName("Benchmark", models: [viewModel.model.split(separator: "/").last.map(String.init) ?? viewModel.model], date: .now),
+                            json: result.jsonText()
+                        ) {
+                            BenchmarkReportView(result: result, device: .current(), date: .now)
+                        }
                     }
                 }
             }

@@ -4,6 +4,7 @@ import SwiftUI
 struct CompareResultsView: View {
     let results: [ModelComparison]
     let names: [String]
+    let prompt: String
     let decodeDifferencePercent: Double?
 
     var body: some View {
@@ -31,8 +32,15 @@ struct CompareResultsView: View {
             }
             if let json = exportText {
                 Section {
-                    ShareLink(item: json, preview: SharePreview("Model comparison")) {
-                        Label("Share Results", systemImage: "square.and.arrow.up")
+                    ReportShareMenu(
+                        title: "Share Results",
+                        fileName: PDFExporter.fileName("Comparison", models: names, date: .now),
+                        json: json
+                    ) {
+                        CompareReportView(
+                            results: results, names: names, prompt: prompt,
+                            decodeDifferencePercent: decodeDifferencePercent, device: .current(), date: .now
+                        )
                     }
                 }
             }

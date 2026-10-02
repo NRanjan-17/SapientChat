@@ -39,6 +39,7 @@ struct CompareView: View {
                     CompareResultsView(
                         results: viewModel.results,
                         names: viewModel.results.map { viewModel.displayName(of: $0.model) },
+                        prompt: viewModel.prompt,
                         decodeDifferencePercent: viewModel.decodeDifferencePercent
                     )
                 }

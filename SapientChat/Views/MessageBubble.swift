@@ -9,13 +9,8 @@ struct MessageBubble: View {
 
     private var isUser: Bool { message.role == .user }
 
-    private var content: AttributedString {
-        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        return (try? AttributedString(markdown: message.text, options: options)) ?? AttributedString(message.text)
-    }
-
     var body: some View {
-        Text(content)
+        content
             .textSelection(.enabled)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -35,6 +30,16 @@ struct MessageBubble: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel(isUser ? "You" : "Assistant")
             .accessibilityValue(message.text)
+    }
+
+    /// Replies keep their structure (code, lists, headings); your own
+    /// messages render as typed, with inline Markdown.
+    @ViewBuilder private var content: some View {
+        if isUser {
+            Text(InlineMarkdown.attributed(message.text))
+        } else {
+            MarkdownContentView(text: message.text)
+        }
     }
 
     private func copy() {
