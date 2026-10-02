@@ -17,9 +17,11 @@ struct ChatViewModelTests {
     private func makeChat(
         model: PhoneModel = TestModels.small,
         memory: FixedMemory = FixedMemory(),
+        storage: FakeStorage = downloadedStorage(),
+        downloads: (any ModelDownloadService)? = nil,
         saveInterval: Duration = .seconds(60)
     ) -> ChatViewModel {
-        let services = makeServices(chat: service, memory: memory)
+        let services = makeServices(chat: service, memory: memory, storage: storage, downloads: downloads)
         let conversation = store.createConversation(model: model.alias)
         let device = DeviceStatus(memoryService: memory, thermalService: SilentThermalService())
         return ChatViewModel(conversation: conversation, services: services, store: store, device: device, saveInterval: saveInterval)
@@ -64,6 +66,7 @@ struct ChatViewModelTests {
         send("Second", in: chat)
         #expect(await eventually { await service.replyCount == 2 })
         let histories = await service.histories
+        #expect(await service.replyModels == [TestModels.small.alias, TestModels.small.alias])
         #expect(histories[1].map(\.text) == ["First", "One", "Second"])
         #expect(histories[1].map(\.role) == [.user, .assistant, .user])
         // The model is loaded once and reused.
@@ -121,6 +124,34 @@ struct ChatViewModelTests {
         #expect(chat.messages.map(\.text) == ["Hi", "New"])
         #expect(try savedTexts() == ["Hi", "New"])
         #expect(await service.histories[1].map(\.text) == ["Hi"], "the old reply is not sent back")
+    }
+
+    @Test func firstUseShowsDownloadThenLoadThenReplies() async throws {
+        let storage = FakeStorage()
+        let log = EventLog()
+        let chat = makeChat(storage: storage, downloads: FakeDownloader(storage: storage, log: log))
+        send("Hi", in: chat)
+
+        #expect(await eventually {
+            if case .downloading(_, let progress) = chat.status { progress.fraction ?? 0 > 0 } else { false }
+        })
+        #expect(await eventually { chat.status == .generating })
+        #expect(await log.events == ["download \(TestModels.small.alias)"])
+        #expect(await service.loadedModels() == [TestModels.small.alias])
+    }
+
+    @Test func cancellingTheFirstDownloadKeepsTheMessageForRetry() async throws {
+        let storage = FakeStorage()
+        let chat = makeChat(storage: storage, downloads: FakeDownloader(storage: storage, hangs: true))
+        send("Hi", in: chat)
+        #expect(await eventually { if case .downloading = chat.status { true } else { false } })
+
+        chat.stop()
+
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["Hi"])
+        #expect(chat.canRegenerate)
+        #expect(await service.loadedModels().isEmpty)
     }
 
     @Test func selectingAModelIsSavedOnTheChat() {

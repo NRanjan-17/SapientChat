@@ -1,15 +1,14 @@
 import Foundation
 import Sapient
 
-/// `ChatService` and `BenchmarkService` backed by one on-device SAPIENT
-/// session, so chats, benchmarks and comparisons share a single loaded
-/// model and never hold two in memory.
+/// `ChatService` and `BenchmarkService` backed by on-device SAPIENT
+/// sessions. Holds up to two models (least recently used released first),
+/// shared by chats, benchmarks and comparisons.
 ///
 /// Uses SAPIENT's async exports, which run inference on the engine's own
 /// thread pool, so no Swift thread is blocked while a model loads or decodes.
 actor SapientChatService: ChatService {
-    private(set) var session: LlmSession?
-    private var loadedModelAlias: String?
+    private var slots = LoadedSlots<LlmSession>()
     /// The engine call behind the latest reply or benchmark. It can outlive
     /// the Swift consumer by a token after a stop, so later work waits for it.
     private var generation: Task<Void, Never>?
@@ -21,35 +20,43 @@ actor SapientChatService: ChatService {
     }
 
     func load(model: String) async throws -> String {
-        await generation?.value
-        if let session, loadedModelAlias == model {
+        if let session = slots.use(model) {
             return session.backendLabel()
         }
-        // Release the current model BEFORE loading the next one: two models
-        // in memory at once is the fastest way past a phone's memory limit.
-        session = nil
-        loadedModelAlias = nil
+        await generation?.value
+        // Free a slot BEFORE loading, so three models never coexist.
+        if slots.models.count >= slots.capacity, let leastRecent = slots.models.last {
+            slots.remove(leastRecent)
+        }
         // Greedy decoding (no sampling fields set): deterministic, the right
         // default for small models. The context window is left to the engine
         // (3072 tokens for models above 1.5B on a phone, 8192 otherwise).
         let loaded = try await loadSession(model: model, options: GenerationOptions(maxTokens: 512))
-        session = loaded
-        loadedModelAlias = model
+        slots.insert(model, session: loaded)
         return loaded.backendLabel()
     }
 
-    func loadedModel() -> String? {
-        loadedModelAlias
+    func loadedModels() -> [String] {
+        slots.models
     }
 
-    func unload() async {
+    func unload(model: String) async {
         await generation?.value
-        session = nil
-        loadedModelAlias = nil
+        slots.remove(model)
     }
 
-    func reply(to history: [ChatMessage]) throws -> AsyncThrowingStream<String, any Error> {
-        guard let session else { throw ChatServiceError.noModelLoaded }
+    func unloadAll() async {
+        await generation?.value
+        slots.removeAll()
+    }
+
+    /// The session for `model`, if loaded (marks it most recently used).
+    func session(for model: String) -> LlmSession? {
+        slots.use(model)
+    }
+
+    func reply(to history: [ChatMessage], model: String) throws -> AsyncThrowingStream<String, any Error> {
+        guard let session = slots.use(model) else { throw ChatServiceError.noModelLoaded }
         let messages = history.map { Message(role: $0.role.rawValue, content: $0.text) }
         let (stream, continuation) = AsyncThrowingStream<String, any Error>.makeStream()
         let listener = StreamListener(continuation: continuation)
@@ -64,8 +71,8 @@ actor SapientChatService: ChatService {
         return stream
     }
 
-    /// Runs `work` after the previous engine call, so turns and benchmarks
-    /// never overlap and each turn commits to history in order.
+    /// Runs `work` after the previous engine call, so replies and benchmarks
+    /// never overlap (they would share the GPU and skew each other).
     @discardableResult
     func enqueueGeneration<T: Sendable>(
         _ work: @escaping @Sendable () async throws -> T

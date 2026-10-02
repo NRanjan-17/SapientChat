@@ -19,7 +19,11 @@ nonisolated struct HubModelStorage: ModelStorageService {
     func download(forRepo repoId: String) -> ModelDownload {
         let blobs = folder(forRepo: repoId).appending(path: "blobs")
         let bytes = Self.size(of: blobs)
-        return bytes > 0 ? .downloaded(bytes: bytes) : .notDownloaded
+        guard bytes > 0 else { return .notDownloaded }
+        // hf-hub writes in-flight files as `*.part` (`.sync.part` from the
+        // async client) and renames them when complete.
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: blobs.path(percentEncoded: false))) ?? []
+        return names.contains { $0.hasSuffix(".part") } ? .partial(bytes: bytes) : .downloaded(bytes: bytes)
     }
 
     func deleteDownload(forRepo repoId: String) throws {

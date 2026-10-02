@@ -88,16 +88,16 @@ final class CompareViewModel: Identifiable {
 
     private func compare(_ alias: String, at index: Int, prompt: String, settings: BenchmarkSettings) async throws {
         let name = displayName(of: alias)
-        if await services.chat.loadedModel() != alias,
-           let problem = await device.memoryProblem(loading: models.first { $0.alias == alias }, chat: services.chat) {
-            throw ChatViewModelError.wontFit(problem)
+        _ = try await ModelPreparer(services: services, device: device).prepare(alias) { step in
+            phase = switch step {
+            case .downloading(let progress): .running("Downloading \(name) · \(progress.text)")
+            case .loading: .running("Loading \(name)…")
+            }
         }
-        phase = .running("Loading \(name)…")
-        _ = try await services.chat.load(model: alias)
         try Task.checkCancellation()
 
         phase = .running("\(name) is answering…")
-        for try await token in try await services.chat.reply(to: [ChatMessage(role: .user, text: prompt)]) {
+        for try await token in try await services.chat.reply(to: [ChatMessage(role: .user, text: prompt)], model: alias) {
             results[index].answer += token
         }
         try Task.checkCancellation()

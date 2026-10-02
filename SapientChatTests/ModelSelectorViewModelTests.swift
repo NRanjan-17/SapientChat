@@ -60,7 +60,7 @@ struct ModelSelectorViewModelTests {
         await selector.deleteDownload(row)
 
         #expect(await service.unloadCount == 1)
-        #expect(await service.loadedModel() == nil)
+        #expect(await service.loadedModels().isEmpty)
         #expect(storage.download(forRepo: TestModels.small.repoId) == .notDownloaded)
         #expect(selector.totalDownloadBytes == 0)
     }

@@ -45,6 +45,7 @@ struct ModelRow: View {
     private var downloadText: String {
         switch row.download {
         case .downloaded(let bytes): "Downloaded · \(Format.bytes(bytes))"
+        case .partial(let bytes): "Partly downloaded · \(Format.bytes(bytes)), resumes when used"
         case .notDownloaded: "Downloads when first used"
         }
     }

@@ -10,7 +10,7 @@ extension SapientChatService: BenchmarkService {
         onProgress: @escaping @Sendable (BenchmarkProgress) -> Void
     ) async throws -> BenchmarkResult {
         _ = try await load(model: model)
-        guard let session else { throw ChatServiceError.noModelLoaded }
+        guard let session = session(for: model) else { throw ChatServiceError.noModelLoaded }
 
         let listener = BenchmarkProgressListener(onProgress: onProgress)
         let options = BenchmarkOptions(

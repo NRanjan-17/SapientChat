@@ -8,6 +8,7 @@ struct AppServices {
     let thermal: any ThermalService
     let memory: any MemoryService
     let storage: any ModelStorageService
+    let downloads: any ModelDownloadService
 
     static func live() -> AppServices {
         let engine = SapientChatService()
@@ -17,7 +18,8 @@ struct AppServices {
             catalog: SapientModelCatalog(),
             thermal: SapientThermalService(),
             memory: SapientMemoryService(),
-            storage: HubModelStorage.appDefault
+            storage: HubModelStorage.appDefault,
+            downloads: SapientModelDownloader()
         )
     }
 }

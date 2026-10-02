@@ -47,16 +47,18 @@ final class ModelSelectorViewModel: Identifiable {
     }
 
     func refresh() async {
-        let loaded = await services.chat.loadedModel()
+        let loadedAliases = await services.chat.loadedModels()
         device.refreshMemory()
-        let reclaimable = loaded == nil ? 0 : device.memory.footprintBytes ?? 0
-        rows = services.catalog.chatModels().map { model in
-            Row(
+        let catalog = services.catalog.chatModels()
+        let loaded = loadedAliases.map { name in (alias: name, model: catalog.first { $0.alias == name }) }
+        rows = catalog.map { model in
+            let plan = MemoryPlanner.plan(loading: model, loaded: loaded, availableBytes: device.memory.availableBytes)
+            return Row(
                 model: model,
                 download: services.storage.download(forRepo: model.repoId),
-                fits: model.fitProblem(availableBytes: device.memory.availableBytes, reclaimableBytes: reclaimable) == nil,
+                fits: plan.fits,
                 isSelected: model.alias == selectedAlias,
-                isLoaded: model.alias == loaded
+                isLoaded: loadedAliases.contains(model.alias)
             )
         }
         totalDownloadBytes = services.storage.totalDownloadBytes()
@@ -71,7 +73,7 @@ final class ModelSelectorViewModel: Identifiable {
     /// Deletes one model's files, unloading it first if it is in memory.
     func deleteDownload(_ row: Row) async {
         if row.isLoaded {
-            await services.chat.unload()
+            await services.chat.unload(model: row.model.alias)
         }
         do {
             try services.storage.deleteDownload(forRepo: row.model.repoId)
@@ -83,7 +85,7 @@ final class ModelSelectorViewModel: Identifiable {
 
     /// Deletes every download (tokenizers too), unloading the model first.
     func deleteAllDownloads() async {
-        await services.chat.unload()
+        await services.chat.unloadAll()
         do {
             try services.storage.deleteAllDownloads()
         } catch {

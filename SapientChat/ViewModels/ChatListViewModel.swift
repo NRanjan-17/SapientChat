@@ -33,7 +33,12 @@ final class ChatListViewModel {
     }
 
     func newChat() {
-        let conversation = store.createConversation(model: modelForNewChat)
+        newChat(model: modelForNewChat)
+    }
+
+    /// A new chat using `model` (e.g. one just loaded in the model manager).
+    func newChat(model: String) {
+        let conversation = store.createConversation(model: model)
         refresh()
         selectedID = conversation.id
     }
@@ -63,8 +68,12 @@ final class ChatListViewModel {
         CompareViewModel(services: services, device: device, initialModel: activeChat?.conversation.modelAlias ?? modelForNewChat)
     }
 
-    func makeStorageViewModel() -> ModelSelectorViewModel {
-        ModelSelectorViewModel(selected: nil, services: services, device: device, onSelect: nil)
+    /// `onNewChat` runs after the manager has loaded the model.
+    func makeModelManager(onNewChat: @escaping (String) -> Void) -> ModelManagerViewModel {
+        ModelManagerViewModel(services: services, device: device) { [weak self] alias in
+            self?.newChat(model: alias)
+            onNewChat(alias)
+        }
     }
 
     func appDidLeaveForeground() {

@@ -8,7 +8,7 @@ struct ChatListView: View {
     @State private var isRenaming = false
     @State private var newTitle = ""
     @State private var compare: CompareViewModel?
-    @State private var storage: ModelSelectorViewModel?
+    @State private var models: ModelManagerViewModel?
 
     var body: some View {
         List(selection: $viewModel.selectedID) {
@@ -39,10 +39,10 @@ struct ChatListView: View {
                 Button("New Chat", systemImage: "square.and.pencil", action: viewModel.newChat)
             }
             ToolbarItem(placement: .topBarLeading) {
-                Menu("More", systemImage: "ellipsis.circle") {
-                    Button("Compare Two Models", systemImage: "square.split.2x1", action: openCompare)
-                    Button("Downloaded Models", systemImage: "internaldrive", action: openStorage)
-                }
+                Button("Models", systemImage: "memorychip", action: openModels)
+            }
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Compare", systemImage: "square.split.2x1", action: openCompare)
             }
         }
         .alert("Rename Chat", isPresented: $isRenaming) {
@@ -53,8 +53,8 @@ struct ChatListView: View {
         .sheet(item: $compare) { compare in
             CompareView(viewModel: compare)
         }
-        .sheet(item: $storage) { storage in
-            ModelSelectorView(viewModel: storage)
+        .sheet(item: $models) { models in
+            ModelManagerView(viewModel: models)
         }
     }
 
@@ -73,8 +73,9 @@ struct ChatListView: View {
         compare = viewModel.makeCompareViewModel()
     }
 
-    private func openStorage() {
-        storage = viewModel.makeStorageViewModel()
+    private func openModels() {
+        // A chat started from the manager closes it and opens the chat.
+        models = viewModel.makeModelManager { _ in models = nil }
     }
 }
 

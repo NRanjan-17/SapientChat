@@ -6,13 +6,15 @@ nonisolated struct PreviewChatService: ChatService {
         "preview"
     }
 
-    func loadedModel() async -> String? {
-        nil
+    func loadedModels() async -> [String] {
+        []
     }
 
-    func unload() async {}
+    func unload(model: String) async {}
 
-    func reply(to history: [ChatMessage]) async throws -> AsyncThrowingStream<String, any Error> {
+    func unloadAll() async {}
+
+    func reply(to history: [ChatMessage], model: String) async throws -> AsyncThrowingStream<String, any Error> {
         let words = "This is a canned **preview** reply, streamed one word at a time.".split(separator: " ")
         let (stream, continuation) = AsyncThrowingStream<String, any Error>.makeStream()
         let task = Task {

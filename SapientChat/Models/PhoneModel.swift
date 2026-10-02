@@ -55,7 +55,7 @@ nonisolated struct PhoneModel: Identifiable, Hashable, Sendable {
     /// (the model being replaced).
     func fitProblem(availableBytes: UInt64?, reclaimableBytes: UInt64 = 0) -> String? {
         guard let availableBytes else { return nil }
-        let headroom = availableBytes + reclaimableBytes
+        let headroom = availableBytes > .max - reclaimableBytes ? .max : availableBytes + reclaimableBytes
         guard estimatedMemoryBytes > headroom else { return nil }
         let need = Int64(clamping: estimatedMemoryBytes).formatted(.byteCount(style: .memory))
         let have = Int64(clamping: headroom).formatted(.byteCount(style: .memory))

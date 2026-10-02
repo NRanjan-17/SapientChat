@@ -53,7 +53,8 @@ extension AppServices {
             catalog: PreviewModelCatalog(),
             thermal: PreviewThermalService(),
             memory: PreviewMemoryService(),
-            storage: PreviewModelStorage()
+            storage: PreviewModelStorage(),
+            downloads: PreviewDownloader()
         )
     }
 }
@@ -97,6 +98,16 @@ extension ModelSelectorViewModel {
             services: .preview,
             device: DeviceStatus(memoryService: PreviewMemoryService(), thermalService: PreviewThermalService()),
             onSelect: { _ in }
+        )
+    }
+}
+
+extension ModelManagerViewModel {
+    static var preview: ModelManagerViewModel {
+        ModelManagerViewModel(
+            services: .preview,
+            device: DeviceStatus(memoryService: PreviewMemoryService(), thermalService: PreviewThermalService()),
+            onNewChat: { _ in }
         )
     }
 }

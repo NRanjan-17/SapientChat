@@ -48,7 +48,7 @@ final class ChatViewModel {
     var isBusy: Bool {
         switch status {
         case .idle, .failed: false
-        case .loading, .generating: true
+        case .downloading, .loading, .generating: true
         }
     }
 
@@ -69,7 +69,8 @@ final class ChatViewModel {
         case .idle:
             [modelName, backendLabel, device.memory.footprintBytes.map { "\(Format.bytes($0)) used" }]
                 .compactMap { $0 }.joined(separator: " · ") + thermal
-        case .loading(let model): "Loading \(model). The first time downloads it…"
+        case .downloading(let model, let progress): "Downloading \(model) · \(progress.text)"
+        case .loading(let model): "Loading \(model) into memory…"
         case .generating: "Generating…" + thermal
         case .failed(let message): "Error: \(message)"
         }
@@ -141,23 +142,23 @@ final class ChatViewModel {
     }
 
     private func runTurn(history: [ChatMessage], modelAlias: String, reply: StoredMessage) async {
+        let name = model?.displayName ?? modelAlias
         do {
-            if await services.chat.loadedModel() != modelAlias {
-                // Refuse a model that can't fit instead of letting iOS kill the app.
-                if let problem = await device.memoryProblem(loading: model, chat: services.chat) {
-                    throw ChatViewModelError.wontFit(problem)
+            // Plans memory (refusing a model that can't fit, instead of
+            // letting iOS kill the app), downloads on first use, loads.
+            backendLabel = try await ModelPreparer(services: services, device: device).prepare(modelAlias) { phase in
+                guard currentReplyID == reply.id else { return }
+                status = switch phase {
+                case .downloading(let progress): .downloading(model: name, progress: progress)
+                case .loading: .loading(model: name)
                 }
-                backendLabel = try await services.chat.load(model: modelAlias)
-                device.refreshMemory()
-            } else if backendLabel == nil {
-                backendLabel = try await services.chat.load(model: modelAlias)
             }
             try Task.checkCancellation()
             guard currentReplyID == reply.id else { return }
             status = .generating
 
             var lastSave = ContinuousClock.now
-            for try await token in try await services.chat.reply(to: history) {
+            for try await token in try await services.chat.reply(to: history, model: modelAlias) {
                 guard currentReplyID == reply.id else { return }
                 append(token, to: reply)
                 if ContinuousClock.now - lastSave >= saveInterval {

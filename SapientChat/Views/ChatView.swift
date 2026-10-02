@@ -20,7 +20,9 @@ struct ChatView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            ChatInputBar(
+            VStack(spacing: 8) {
+                ModelStatusCard(status: viewModel.status, onCancel: viewModel.stop, onRetry: viewModel.regenerate)
+                ChatInputBar(
                 draft: $viewModel.draft,
                 placeholder: "Message \(viewModel.modelName)…",
                 isBusy: viewModel.isBusy,
@@ -28,7 +30,9 @@ struct ChatView: View {
                 canSend: viewModel.canSend,
                 onSend: viewModel.send,
                 onStop: viewModel.stop
-            )
+                )
+            }
+            .animation(.smooth, value: viewModel.status)
         }
         .navigationTitle(viewModel.conversation.title)
         .navigationSubtitle(viewModel.statusText)

@@ -27,14 +27,4 @@ final class DeviceStatus {
             thermal = pressure
         }
     }
-
-    /// Why `model` can't be loaded right now, or nil if it should fit. The
-    /// model currently loaded is released first, so its memory counts as free.
-    func memoryProblem(loading model: PhoneModel?, chat: any ChatService) async -> String? {
-        guard let model else { return nil }
-        let somethingLoaded = await chat.loadedModel() != nil
-        refreshMemory()
-        let reclaimable = somethingLoaded ? memory.footprintBytes ?? 0 : 0
-        return model.fitProblem(availableBytes: memory.availableBytes, reclaimableBytes: reclaimable)
-    }
 }
