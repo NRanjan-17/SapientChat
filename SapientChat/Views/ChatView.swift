@@ -22,6 +22,7 @@ struct ChatView: View {
         .safeAreaInset(edge: .bottom) {
             ChatInputBar(
                 draft: $viewModel.draft,
+                placeholder: "Message \(viewModel.modelName)…",
                 isBusy: viewModel.isBusy,
                 isGenerating: viewModel.isGenerating,
                 canSend: viewModel.canSend,
