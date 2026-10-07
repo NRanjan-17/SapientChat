@@ -9,7 +9,8 @@ struct SapientLiveActivity: Widget {
         ActivityConfiguration(for: SapientActivityAttributes.self) { context in
             LockScreenView(attributes: context.attributes, state: context.state)
                 .padding()
-                .activityBackgroundTint(nil)
+                // Clear, so the Lock Screen's Liquid Glass shows through.
+                .activityBackgroundTint(.clear)
         } dynamicIsland: { context in
             let state = context.state
             return DynamicIsland {
@@ -137,20 +138,27 @@ private struct StatsRow: View {
 
     var body: some View {
         if state.phase == .serving {
-            HStack(spacing: 16) {
+            tiles {
                 stat("\(state.requests)", state.requests == 1 ? "request" : "requests")
                 if let rate = state.tokensPerSecond {
                     stat(String(format: "%.1f", rate), "last tok/s")
                 }
             }
         } else if state.tokens > 0 || state.tokensPerSecond != nil {
-            HStack(spacing: 16) {
+            tiles {
                 stat(state.tokensPerSecond.map { String(format: "%.1f", $0) } ?? "–", "tok/s")
                 stat("\(state.tokens)", "tokens")
                 if let ttft = state.timeToFirstTokenMs {
                     stat("\(ttft) ms", "first token")
                 }
             }
+        }
+    }
+
+    /// Stats as Liquid Glass tiles that blend together.
+    private func tiles(@ViewBuilder _ content: () -> some View) -> some View {
+        GlassEffectContainer(spacing: 8) {
+            HStack(spacing: 8, content: content)
         }
     }
 
@@ -162,6 +170,9 @@ private struct StatsRow: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .glassEffect(.regular.tint(Color.accentColor.opacity(0.15)), in: .rect(cornerRadius: 12))
     }
 }
 
