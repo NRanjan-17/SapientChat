@@ -144,6 +144,8 @@ final class ChatViewModel {
         let name = model?.displayName ?? modelAlias
         var meter = ReplyStatsMeter()
         var loadMs: Int?
+        // The Dynamic Island, shown only if the model has to download or load.
+        var island: LiveActivityTracker?
         defer { liveTokensPerSecond = nil }
         do {
             // Plans memory (refusing a model that can't fit, instead of
@@ -152,12 +154,18 @@ final class ChatViewModel {
             var hadToLoad = false
             backendLabel = try await ModelPreparer(services: services, device: device).prepare(modelAlias) { phase in
                 hadToLoad = true
+                if island == nil {
+                    island = LiveActivityTracker(service: services.liveActivities, title: "Chat")
+                    island?.start(model: name)
+                }
+                island?.phase(phase)
                 guard currentReplyID == reply.id else { return }
                 status = switch phase {
                 case .downloading(let progress): .downloading(model: name, progress: progress)
                 case .loading: .loading(model: name)
                 }
             }
+            island?.finish(detail: "Ready")
             if hadToLoad { loadMs = (ContinuousClock.now - prepareStart).milliseconds }
             try Task.checkCancellation()
             guard currentReplyID == reply.id else { return }
@@ -183,6 +191,11 @@ final class ChatViewModel {
             attach(meter.stats(model: modelAlias, backend: backendLabel, loadMs: loadMs), to: reply)
             finishTurn(reply: reply, error: nil)
         } catch {
+            if error is CancellationError {
+                island?.finish(detail: "Stopped")
+            } else {
+                island?.fail(String(describing: error))
+            }
             // A reply stopped or failed part-way keeps the stats of what arrived.
             attach(meter.stats(model: modelAlias, backend: backendLabel, loadMs: loadMs), to: reply)
             finishTurn(reply: reply, error: error)

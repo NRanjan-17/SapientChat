@@ -11,6 +11,8 @@ struct AppServices {
     let downloads: any ModelDownloadService
     /// Per-model context windows the user picked; the engine reads them at load.
     var contextWindows = ContextWindowStore.standard
+    /// The Dynamic Island; nothing in tests and previews.
+    var liveActivities: any LiveActivityService = NoLiveActivities()
 
     static func live() -> AppServices {
         let engine = SapientChatService(contextWindows: .standard)

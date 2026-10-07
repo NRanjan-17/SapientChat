@@ -37,6 +37,8 @@ final class ModelManagerViewModel: Identifiable {
     @ObservationIgnored private let services: AppServices
     private var activities: [String: Activity] = [:]
     @ObservationIgnored private var tasks: [String: Task<Void, Never>] = [:]
+    /// Dynamic Island per model, started at its first download or load step.
+    @ObservationIgnored private var islands: [String: LiveActivityTracker] = [:]
 
     init(services: AppServices, device: DeviceStatus, onNewChat: @escaping (String) -> Void = { _ in }) {
         self.services = services
@@ -83,7 +85,7 @@ final class ModelManagerViewModel: Identifiable {
     /// Downloads without loading, so the model is ready offline later.
     func download(_ row: Row) {
         let alias = row.model.alias
-        run(alias) { [self] in
+        run(alias, done: "Downloaded") { [self] in
             try await ModelPreparer(services: services, device: device).download(alias) { phase in
                 if case .downloading(let progress) = phase { setActivity(.downloading(progress), for: alias) }
             }
@@ -94,7 +96,7 @@ final class ModelManagerViewModel: Identifiable {
     /// recently used model if every slot is taken or memory is short).
     func load(_ row: Row) {
         let alias = row.model.alias
-        run(alias) { [self] in
+        run(alias, done: "Loaded") { [self] in
             _ = try await prepare(alias)
         }
     }
@@ -177,6 +179,14 @@ final class ModelManagerViewModel: Identifiable {
         return backend
     }
 
+    private func island(for alias: String) -> LiveActivityTracker {
+        if let island = islands[alias] { return island }
+        let island = LiveActivityTracker(service: services.liveActivities, title: "Models")
+        island.start(model: displayName(of: alias))
+        islands[alias] = island
+        return island
+    }
+
     /// "To load X, released Y: iOS allowed only 1.2 GB more." Says whether
     /// it was the slot limit or memory, so neither looks like a hidden cap.
     static func releaseNotice(loading: String, released: [String], availableBytes: UInt64?, slotsFull: Bool) -> String {
@@ -189,18 +199,23 @@ final class ModelManagerViewModel: Identifiable {
     }
 
     /// Runs one task per model; the row shows its activity until it ends.
-    private func run(_ alias: String, _ work: @escaping () async throws -> Void) {
+    private func run(_ alias: String, done: String = "Ready", _ work: @escaping () async throws -> Void) {
         guard tasks[alias] == nil else { return }
         tasks[alias] = Task { [weak self] in
             do {
                 try await work()
+                self?.islands[alias]?.finish(detail: done)
             } catch is CancellationError {
                 // Cancelled by the user; partial downloads resume next time.
+                self?.islands[alias]?.finish(detail: "Cancelled")
             } catch ChatViewModelError.wontFit(let message) {
                 self?.errorMessage = message
+                self?.islands[alias]?.fail(message)
             } catch {
                 self?.errorMessage = String(describing: error)
+                self?.islands[alias]?.fail(String(describing: error))
             }
+            self?.islands[alias] = nil
             self?.finish(alias)
         }
         Task { await refresh() }
@@ -208,6 +223,11 @@ final class ModelManagerViewModel: Identifiable {
 
     private func setActivity(_ activity: Activity, for alias: String) {
         activities[alias] = activity
+        let phase: ModelPhase = switch activity {
+        case .downloading(let progress): .downloading(progress)
+        case .loading: .loading
+        }
+        island(for: alias).phase(phase)
         rows = rows.map { row in
             guard row.model.alias == alias else { return row }
             return Row(model: row.model, download: row.download, isLoaded: row.isLoaded, fits: row.fits, activity: activity)

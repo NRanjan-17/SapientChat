@@ -22,10 +22,13 @@ struct SapientChatApp: App {
             fatalError("Couldn't open the chat database: \(error)")
         }
         self.container = container
+        let activities = ActivityKitLiveActivities()
+        var services = AppServices.live()
+        services.liveActivities = activities
         _viewModel = State(initialValue: ChatListViewModel(
-            services: .live(),
+            services: services,
             store: SwiftDataConversationStore(context: container.mainContext),
-            liveActivities: ActivityKitLiveActivities()
+            liveActivities: activities
         ))
     }
 
