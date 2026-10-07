@@ -3,6 +3,8 @@ import Foundation
 /// One bubble in the transcript (a value copy of a `StoredMessage`).
 nonisolated struct ChatMessage: Identifiable, Equatable, Sendable {
     enum Role: String, Sendable {
+        /// Instructions for the model; only API clients send these.
+        case system
         case user
         case assistant
     }

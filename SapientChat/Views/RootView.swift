@@ -23,6 +23,12 @@ struct RootView: View {
                 }
             }
         }
+        .safeAreaInset(edge: .top) {
+            HandoffBanner(viewModel: viewModel.handoff)
+        }
+        .onOpenURL { url in
+            if HandoffViewModel.handles(url) { viewModel.handoff.open(url) }
+        }
         .task { await viewModel.device.observeThermal() }
         .onChange(of: scenePhase) { _, phase in
             handleScenePhase(phase)
@@ -30,7 +36,11 @@ struct RootView: View {
     }
 
     private func handleScenePhase(_ phase: ScenePhase) {
-        if phase != .active { viewModel.appDidLeaveForeground() }
+        if phase == .active {
+            viewModel.server.appDidBecomeActive()
+        } else {
+            viewModel.appDidLeaveForeground()
+        }
     }
 }
 

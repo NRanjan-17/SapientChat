@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Saved chats, newest first, with new/rename/delete plus Compare and
-/// Models entry points.
+/// Saved chats, newest first, with new/rename/delete plus Compare, Models
+/// and API Server entry points.
 struct ChatListView: View {
     @Bindable var viewModel: ChatListViewModel
     @State private var renaming: Conversation?
@@ -9,6 +9,7 @@ struct ChatListView: View {
     @State private var newTitle = ""
     @State private var compare: CompareViewModel?
     @State private var models: ModelManagerViewModel?
+    @State private var isShowingServer = false
 
     var body: some View {
         List(selection: $viewModel.selectedID) {
@@ -44,6 +45,10 @@ struct ChatListView: View {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Compare", systemImage: "square.split.2x1", action: openCompare)
             }
+            ToolbarItem(placement: .topBarLeading) {
+                Button("API Server", systemImage: serverImage) { isShowingServer = true }
+                    .tint(viewModel.server.status == .running ? .green : nil)
+            }
         }
         .alert("Rename Chat", isPresented: $isRenaming) {
             TextField("Title", text: $newTitle)
@@ -56,6 +61,13 @@ struct ChatListView: View {
         .sheet(item: $models) { models in
             ModelManagerView(viewModel: models)
         }
+        .sheet(isPresented: $isShowingServer) {
+            ServerView(viewModel: viewModel.server)
+        }
+    }
+
+    private var serverImage: String {
+        viewModel.server.status == .running ? "dot.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right"
     }
 
     private func startRenaming(_ conversation: Conversation) {

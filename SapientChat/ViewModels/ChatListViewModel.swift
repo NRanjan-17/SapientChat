@@ -12,6 +12,11 @@ final class ChatListViewModel {
     }
     private(set) var activeChat: ChatViewModel?
     let device: DeviceStatus
+    /// The local API server; lives as long as the app so it keeps serving
+    /// with its screen closed.
+    let server: ServerViewModel
+    /// API requests other apps on this device hand over by URL.
+    let handoff: HandoffViewModel
 
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private let store: any ConversationStore
@@ -20,6 +25,9 @@ final class ChatListViewModel {
         self.services = services
         self.store = store
         device = DeviceStatus(memoryService: services.memory, thermalService: services.thermal)
+        let router = ServeRouter(services: services, device: device)
+        server = ServerViewModel(router: router)
+        handoff = HandoffViewModel(router: router)
         refresh()
     }
 
