@@ -29,10 +29,10 @@ final class SilentAudioKeeper: BackgroundKeeping {
         }
         silence.frameLength = silence.frameCapacity // zero-filled: silence
         engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: format)
+        try engine.connectNode(player, to: engine.mainMixerNode, format: format)
         try engine.start()
         player.scheduleBuffer(silence, at: nil, options: .loops)
-        player.play()
+        try player.playAudio()
         isRunning = true
         observeInterruptions()
     }
@@ -48,19 +48,18 @@ final class SilentAudioKeeper: BackgroundKeeping {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    /// A call or another app's audio can stop ours; resume when it ends.
+    /// A call or another app's audio can stop ours. When iOS says the
+    /// interruption is over, resume, whatever its recommendation: the
+    /// silence mixes with other audio, so resuming never cuts anyone off.
     private func observeInterruptions() {
         interruptionObserver = NotificationCenter.default.addObserver(
-            forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
-        ) { [weak self] note in
-            guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                  AVAudioSession.InterruptionType(rawValue: raw) == .ended
-            else { return }
+            forName: AVAudioSession.resumptionRecommendationNotification, object: nil, queue: .main
+        ) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self, self.isRunning else { return }
                 try? AVAudioSession.sharedInstance().setActive(true)
                 if !self.engine.isRunning { try? self.engine.start() }
-                self.player.play()
+                try? self.player.playAudio()
             }
         }
     }
