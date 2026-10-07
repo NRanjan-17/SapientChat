@@ -21,18 +21,10 @@ import Synchronization
 /// `POST /v1/models/{download,load,unload,delete}` and `GET /v1/ping`, so
 /// other apps can see what this device offers and manage it.
 final class ServeRouter {
-    /// One handled request, for the server screen's log.
-    struct LogEntry: Identifiable, Sendable {
-        let id = UUID()
-        let date: Date
-        let method: String
-        let path: String
-        let status: Int
-    }
-
     /// Requests must carry `Authorization: Bearer <apiKey>` when set.
     var apiKey: String?
-    var onRequest: ((LogEntry) -> Void)?
+    /// Each request once its response has fully gone out, for the request log.
+    var onRequest: ((RequestLogEntry) -> Void)?
     /// Told each download/load step of a model an API request prepares, then
     /// nil when it's done, so the Models tab shows API work too.
     var onModelPhase: ((String, ModelPhase?) -> Void)?
@@ -53,9 +45,29 @@ final class ServeRouter {
             service: liveActivities,
             title: source.map { "Request from \($0)" } ?? "API request"
         ) : nil
-        let response = await route(request, activity: activity)
-        onRequest?(LogEntry(date: .now, method: request.method, path: request.path, status: response.status))
-        return response
+        let capture = RequestCapture(request, source: source)
+        let response = await route(request, activity: activity, capture: capture)
+        switch response.body {
+        case .data(let data):
+            if let entry = capture.finish(status: response.status, responseBody: data) { onRequest?(entry) }
+            return response
+        case .stream(let chunks):
+            // Logged when the stream ends, so a streamed reply is saved complete.
+            let status = response.status
+            let report = onRequest
+            let (relayed, continuation) = AsyncThrowingStream<Data, any Error>.makeStream()
+            let task = Task {
+                do {
+                    for try await chunk in chunks { continuation.yield(chunk) }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+                if let entry = capture.finish(status: status, responseBody: nil) { report?(entry) }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+            return HTTPResponse(status: status, contentType: response.contentType, body: .stream(relayed))
+        }
     }
 
     /// Requests that do model work worth showing in the Dynamic Island.
@@ -65,7 +77,7 @@ final class ServeRouter {
         ].contains(request.path)
     }
 
-    private func route(_ request: HTTPRequest, activity: LiveActivityTracker?) async -> HTTPResponse {
+    private func route(_ request: HTTPRequest, activity: LiveActivityTracker?, capture: RequestCapture) async -> HTTPResponse {
         if request.method == "OPTIONS" {
             return .empty(status: 204)
         }
@@ -80,15 +92,15 @@ final class ServeRouter {
         case ("GET", "/v1/ping"):
             return .json(PingResponse(version: SapientVersion.current))
         case ("POST", "/v1/chat/completions"):
-            return await chatCompletions(request, activity: activity)
+            return await chatCompletions(request, activity: activity, capture: capture)
         case ("POST", "/v1/completions"):
-            return await completions(request, activity: activity)
+            return await completions(request, activity: activity, capture: capture)
         case ("GET", "/v1/catalog"):
             return await catalog(request)
         case ("POST", "/v1/models/download"):
-            return await download(request, activity: activity)
+            return await download(request, activity: activity, capture: capture)
         case ("POST", "/v1/models/load"):
-            return await load(request, activity: activity)
+            return await load(request, activity: activity, capture: capture)
         case ("POST", "/v1/models/unload"):
             return await unload(request)
         case ("POST", "/v1/models/delete"):
@@ -181,13 +193,14 @@ final class ServeRouter {
     }
 
     /// Downloads without loading. With `stream`, sends progress events.
-    private func download(_ request: HTTPRequest, activity: LiveActivityTracker?) async -> HTTPResponse {
+    private func download(_ request: HTTPRequest, activity: LiveActivityTracker?, capture: RequestCapture) async -> HTTPResponse {
         let model: PhoneModel
         switch requiredModel(request) {
         case .success(let found): model = found
         case .failure(let failure): return failure.response
         }
         activity?.start(model: model.displayName)
+        capture.model(model.alias)
         let stream = (try? APIJSON.decoder.decode(ModelActionRequest.self, from: request.body))?.stream ?? false
         let downloads = services.downloads
         let alias = model.alias
@@ -243,13 +256,13 @@ final class ServeRouter {
     }
 
     /// Downloads if needed, then loads into a memory slot.
-    private func load(_ request: HTTPRequest, activity: LiveActivityTracker?) async -> HTTPResponse {
+    private func load(_ request: HTTPRequest, activity: LiveActivityTracker?, capture: RequestCapture) async -> HTTPResponse {
         let found: PhoneModel
         switch requiredModel(request) {
         case .success(let model): found = model
         case .failure(let failure): return failure.response
         }
-        switch await prepare(found.alias, activity: activity) {
+        switch await prepare(found.alias, activity: activity, capture: capture) {
         case .success(let (model, backend)):
             activity?.finish(detail: "Loaded · \(backend)")
             return .json(ModelActionResponse(
@@ -322,7 +335,7 @@ final class ServeRouter {
         return .success((model, body))
     }
 
-    private func chatCompletions(_ request: HTTPRequest, activity: LiveActivityTracker?) async -> HTTPResponse {
+    private func chatCompletions(_ request: HTTPRequest, activity: LiveActivityTracker?, capture: RequestCapture) async -> HTTPResponse {
         let body: ChatCompletionRequest
         do {
             body = try APIJSON.decoder.decode(ChatCompletionRequest.self, from: request.body)
@@ -336,12 +349,12 @@ final class ServeRouter {
             return .json(ServeErrorBody.invalidRequest("messages must be non-empty and use the system, user or assistant roles"), status: 400)
         }
         let model: PhoneModel
-        switch await prepare(body.model, activity: activity) {
+        switch await prepare(body.model, activity: activity, capture: capture) {
         case .success(let ready): model = ready.model
         case .failure(let failure): return failure.response
         }
         let events = generation(
-            model: model, history: history, limit: body.maxTokens, stops: body.stop?.values ?? [], activity: activity
+            model: model, history: history, limit: body.maxTokens, stops: body.stop?.values ?? [], activity: activity, capture: capture
         )
         let id = Self.newID()
         let created = Int(Date.now.timeIntervalSince1970)
@@ -375,7 +388,7 @@ final class ServeRouter {
         }
     }
 
-    private func completions(_ request: HTTPRequest, activity: LiveActivityTracker?) async -> HTTPResponse {
+    private func completions(_ request: HTTPRequest, activity: LiveActivityTracker?, capture: RequestCapture) async -> HTTPResponse {
         let body: CompletionRequest
         do {
             body = try APIJSON.decoder.decode(CompletionRequest.self, from: request.body)
@@ -383,13 +396,13 @@ final class ServeRouter {
             return .json(ServeErrorBody.invalidRequest("Invalid request body: \(error.localizedDescription)"), status: 422)
         }
         let model: PhoneModel
-        switch await prepare(body.model, activity: activity) {
+        switch await prepare(body.model, activity: activity, capture: capture) {
         case .success(let ready): model = ready.model
         case .failure(let failure): return failure.response
         }
         let events = generation(
             model: model, history: [ChatMessage(role: .user, text: body.prompt)],
-            limit: body.maxTokens, stops: body.stop?.values ?? [], activity: activity
+            limit: body.maxTokens, stops: body.stop?.values ?? [], activity: activity, capture: capture
         )
         let id = Self.newID()
         let created = Int(Date.now.timeIntervalSince1970)
@@ -429,7 +442,8 @@ final class ServeRouter {
     /// `limit` fragments or at a stop sequence; cancelling the consumer
     /// (the client hanging up) stops the engine.
     private func generation(
-        model: PhoneModel, history: [ChatMessage], limit: Int?, stops: [String], activity: LiveActivityTracker?
+        model: PhoneModel, history: [ChatMessage], limit: Int?, stops: [String],
+        activity: LiveActivityTracker?, capture: RequestCapture
     ) -> AsyncThrowingStream<GenerationEvent, any Error> {
         let chat = services.chat
         let (events, continuation) = AsyncThrowingStream<GenerationEvent, any Error>.makeStream()
@@ -437,25 +451,31 @@ final class ServeRouter {
             var filter = StopSequenceFilter(stops)
             var count = 0
             activity?.generating()
+            capture.prompt(history)
+            capture.generating()
             do {
                 for try await fragment in try await chat.reply(to: history, model: model.alias) {
                     count += 1
                     activity?.token()
                     let text = filter.feed(fragment)
+                    capture.token(text)
                     if !text.isEmpty { continuation.yield(.text(text)) }
                     if filter.isStopped { break }
                     if let limit, limit > 0, count >= limit { break }
                 }
                 let rest = filter.flush()
+                capture.append(rest)
                 if !rest.isEmpty { continuation.yield(.text(rest)) }
                 continuation.yield(.done(Usage(promptTokens: 0, completionTokens: count, totalTokens: count)))
                 continuation.finish()
                 activity?.finish()
             } catch is CancellationError {
                 activity?.finish(detail: "Stopped")
+                capture.failed("Stopped: the client disconnected")
                 continuation.finish(throwing: CancellationError())
             } catch {
                 activity?.fail(Self.describe(error))
+                capture.failed(Self.describe(error))
                 continuation.finish(throwing: error)
             }
         }
@@ -508,7 +528,7 @@ final class ServeRouter {
     /// recently used loaded one), then downloads it if needed and loads it,
     /// releasing least recently used models to make room as the app does.
     private func prepare(
-        _ requested: String?, activity: LiveActivityTracker? = nil
+        _ requested: String?, activity: LiveActivityTracker? = nil, capture: RequestCapture? = nil
     ) async -> Result<(model: PhoneModel, backend: String), Failure> {
         let name: String
         if let requested, !requested.isEmpty {
@@ -526,6 +546,7 @@ final class ServeRouter {
             ), status: 400)))
         }
         activity?.start(model: model.displayName)
+        capture?.model(model.alias)
         let alias = model.alias
         defer { onModelPhase?(alias, nil) }
         do {

@@ -203,3 +203,17 @@ struct APIDownloadsShowInModelsTabTests {
         #expect(await eventually { manager.rows.first { $0.model == TestModels.small }?.activity == nil })
     }
 }
+
+@MainActor
+struct ServerHeartbeatTests {
+    @Test func theServerActivityKeepsSendingWhileIdle() async {
+        let service = RecordingLiveActivities()
+        let server = ServerLiveActivity(service: service, minimumInterval: 0, heartbeatInterval: .milliseconds(20))
+        server.begin(endpoint: "127.0.0.1:1")
+        #expect(await eventually { service.updates.count >= 3 }, "heartbeats arrive without any requests")
+        server.finish()
+        let count = service.updates.count
+        try? await Task.sleep(for: .milliseconds(80))
+        #expect(service.updates.count == count, "and stop when the server stops")
+    }
+}

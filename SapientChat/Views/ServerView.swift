@@ -75,11 +75,14 @@ struct ServerView: View {
                         .autocorrectionDisabled()
                 }
                 Toggle("Keep screen awake", isOn: $viewModel.keepsAwake)
+                Toggle("Save prompts and replies", isOn: $viewModel.savesContent)
             } header: {
                 Text("Settings")
             } footer: {
                 Text("With an API key set, clients must send `Authorization: Bearer <key>`. "
-                    + "Set one before allowing other devices on a shared network.")
+                    + "Set one before allowing other devices on a shared network. "
+                    + "The request log keeps the last \(ServerViewModel.logLimit) requests on this device; "
+                    + "with saving off it keeps only what happened, not what was said.")
             }
 
             TryItSections(viewModel: viewModel)

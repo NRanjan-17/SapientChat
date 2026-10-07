@@ -20,13 +20,14 @@ final class ServerViewModel: Identifiable {
     }
 
     static let defaultPort: UInt16 = 11435
-    static let logLimit = 100
+    /// Requests kept in the log, across launches.
+    static let logLimit = 500
 
     let id = UUID()
     private(set) var status: Status = .stopped
     private(set) var addresses: [NetworkAddresses.Address] = []
     /// Newest first, at most `logLimit`.
-    private(set) var log: [ServeRouter.LogEntry] = []
+    private(set) var log: [RequestLogEntry] = []
 
     /// One-line server state for toggles and lists.
     var statusTitle: String {
@@ -44,6 +45,11 @@ final class ServerViewModel: Identifiable {
     /// Reachable from other devices on the network, not just this one.
     var allowsNetwork: Bool {
         didSet { settingChanged(Keys.allowsNetwork, allowsNetwork) }
+    }
+    /// Save each request's prompt, reply and bodies in the log, not just
+    /// what happened. On by default; everything stays on this device.
+    var savesContent: Bool {
+        didSet { defaults.set(savesContent, forKey: Keys.savesContent) }
     }
     /// Required as `Authorization: Bearer <key>` when not empty.
     var apiKey: String {
@@ -76,6 +82,7 @@ final class ServerViewModel: Identifiable {
     }
 
     @ObservationIgnored private let router: ServeRouter
+    @ObservationIgnored private let requestLog: any RequestLogStore
     @ObservationIgnored private let server = HTTPServer()
     @ObservationIgnored private let defaults: UserDefaults
     /// The user turned the server on (it may be paused in the background).
@@ -92,10 +99,14 @@ final class ServerViewModel: Identifiable {
         router: ServeRouter,
         defaults: UserDefaults = .standard,
         keeper: (any BackgroundKeeping)? = nil,
-        liveActivities: any LiveActivityService = NoLiveActivities()
+        liveActivities: any LiveActivityService = NoLiveActivities(),
+        requestLog: any RequestLogStore = InMemoryRequestLogStore()
     ) {
         self.defaults = defaults
         self.router = router
+        self.requestLog = requestLog
+        log = requestLog.entries(limit: Self.logLimit)
+        savesContent = defaults.object(forKey: Keys.savesContent) as? Bool ?? true
         serverActivity = ServerLiveActivity(service: liveActivities)
         // Request trackers update the server's activity while it's up, and
         // start their own otherwise.
@@ -182,6 +193,7 @@ final class ServerViewModel: Identifiable {
 
     func clearLog() {
         log.removeAll()
+        requestLog.deleteAll()
     }
 
     func refreshAddresses() {
@@ -203,6 +215,7 @@ final class ServerViewModel: Identifiable {
         static let apiKey = "server.apiKey"
         static let keepsAwake = "server.keepsAwake"
         static let runsInBackground = "server.runsInBackground"
+        static let savesContent = "server.savesContent"
     }
 
     private static func defaultKeeper() -> any BackgroundKeeping {
@@ -294,10 +307,15 @@ final class ServerViewModel: Identifiable {
         updateIdleTimer()
     }
 
-    private func record(_ entry: ServeRouter.LogEntry) {
+    private func record(_ entry: RequestLogEntry) {
         serverActivity.recorded(method: entry.method, path: entry.path, status: entry.status)
-        log.insert(entry, at: 0)
-        if log.count > Self.logLimit { log.removeLast(log.count - Self.logLimit) }
+        let saved = savesContent ? entry : entry.withoutContent()
+        log.insert(saved, at: 0)
+        requestLog.insert(saved)
+        if log.count > Self.logLimit {
+            log.removeLast(log.count - Self.logLimit)
+            requestLog.trim(keeping: Self.logLimit)
+        }
     }
 
     private func updateIdleTimer() {

@@ -32,14 +32,15 @@ final class ChatListViewModel {
 
     init(
         services: AppServices, store: any ConversationStore,
-        liveActivities: any LiveActivityService = NoLiveActivities()
+        liveActivities: any LiveActivityService = NoLiveActivities(),
+        requestLog: any RequestLogStore = InMemoryRequestLogStore()
     ) {
         self.services = services
         self.store = store
         device = DeviceStatus(memoryService: services.memory, thermalService: services.thermal)
         let router = ServeRouter(services: services, device: device)
         router.liveActivities = liveActivities
-        server = ServerViewModel(router: router, liveActivities: liveActivities)
+        server = ServerViewModel(router: router, liveActivities: liveActivities, requestLog: requestLog)
         handoff = HandoffViewModel(router: router)
         models = ModelManagerViewModel(services: services, device: device)
         router.onModelPhase = { [models] alias, phase in models.apiPhase(phase, for: alias) }
