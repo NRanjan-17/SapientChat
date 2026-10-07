@@ -5,6 +5,7 @@ struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     let list: ChatListViewModel
     @State private var modelSelector: ModelSelectorViewModel?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         Group {
@@ -43,6 +44,9 @@ struct ChatView: View {
                     .disabled(viewModel.isBusy)
             }
         }
+        // On iPhone a chat gets the whole screen; on iPad it sits beside the
+        // list, where the tabs stay reachable.
+        .toolbarVisibility(horizontalSizeClass == .compact ? .hidden : .automatic, for: .tabBar)
         .sheet(item: $modelSelector) { selector in
             ModelSelectorView(viewModel: selector)
         }
