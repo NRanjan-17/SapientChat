@@ -30,6 +30,14 @@ struct ModelManagerRow: View {
                 }
                 ModelSpecChips(model: row.model)
                 status
+                if ContextWindowStore.isAdjustable(row.model), row.activity == nil {
+                    Button(action: { actions.contextWindow(row) }) {
+                        IconText(contextText, systemImage: "text.alignleft")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityHint("Changes how much of a conversation the model can see")
+                }
             }
             // Separators start under the text, the same for every row.
             .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
@@ -43,6 +51,10 @@ struct ModelManagerRow: View {
         }
         .animation(.smooth, value: row.activity)
         .animation(.smooth, value: row.isLoaded)
+    }
+
+    private var contextText: String {
+        row.contextWindow.map { "Context: \($0.formatted()) tokens" } ?? "Context: Default"
     }
 
     @ViewBuilder private var status: some View {

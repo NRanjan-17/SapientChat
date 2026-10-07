@@ -59,14 +59,14 @@ struct CatalogFilterAndPingTests {
 }
 
 /// Records start/stop instead of playing audio.
-final class FakeKeeper: BackgroundKeeping {
+final class FakeKeeper: BackgroundKeeping, @unchecked Sendable {
     private(set) var isRunning = false
     var fails = false
-    func start() throws {
+    func start() async throws {
         if fails { throw SilentAudioKeeper.KeeperError.noBuffer }
         isRunning = true
     }
-    func stop() { isRunning = false }
+    func stop() async { isRunning = false }
 }
 
 @MainActor
@@ -92,29 +92,37 @@ struct ServerBackgroundTests {
         _ = try? await chat.load(model: TestModels.small.alias)
 
         server.setRunsInBackground(true)
-        #expect(server.runsInBackground)
-        #expect(EngineBackendPreference.cpuOnly(defaults), "models load on the CPU")
-        #expect(!keeper.isRunning, "nothing to keep alive while the server is off")
-        #expect(await eventually { await chat.loadedModels().isEmpty }, "released to reload on the CPU")
+        #expect(server.runsInBackground, "the choice is saved")
+        #expect(!server.isServingInBackground, "but does nothing while the server is off")
+        #expect(!EngineBackendPreference.cpuOnly(defaults), "GPU as usual")
+        #expect(!keeper.isRunning, "the app closes normally")
+        #expect(await chat.loadedModels() == [TestModels.small.alias])
 
         server.port = UInt16.random(in: 40_000...50_000)
         server.isOn = true
+        await server.keeperSettled()
+        #expect(server.isServingInBackground)
         #expect(keeper.isRunning)
-        server.isOn = false
-        #expect(!keeper.isRunning)
+        #expect(EngineBackendPreference.cpuOnly(defaults), "models load on the CPU")
+        #expect(await eventually { await chat.loadedModels().isEmpty }, "released to reload on the CPU")
 
-        server.setRunsInBackground(false)
-        #expect(!EngineBackendPreference.cpuOnly(defaults))
+        server.isOn = false
+        await server.keeperSettled()
+        #expect(!keeper.isRunning)
+        #expect(!EngineBackendPreference.cpuOnly(defaults), "back to the GPU")
+        #expect(server.runsInBackground, "the choice is still saved for next time")
     }
 
     @Test(.enabled(if: ServerViewModel.canRunInBackground))
-    func aKeeperThatCannotStartTurnsTheModeOff() {
+    func aKeeperThatCannotStartTurnsTheModeOff() async {
         let keeper = FakeKeeper()
         keeper.fails = true
         let (server, _) = makeServer(keeper: keeper, defaults: freshDefaults())
         server.port = UInt16.random(in: 40_000...50_000)
         server.isOn = true
         server.setRunsInBackground(true)
+        await server.keeperSettled()
+        await server.keeperSettled()
         #expect(!server.runsInBackground)
         #expect(server.backgroundError != nil)
         server.isOn = false

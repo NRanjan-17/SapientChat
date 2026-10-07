@@ -17,6 +17,9 @@ final class ModelManagerViewModel: Identifiable {
         let isLoaded: Bool
         let fits: Bool
         let activity: Activity?
+        /// The picked context window; nil is the default. Only models of
+        /// 1.4B and up can pick one (`ContextWindowStore.isAdjustable`).
+        var contextWindow: Int?
 
         var id: String { model.id }
     }
@@ -76,7 +79,8 @@ final class ModelManagerViewModel: Identifiable {
                 download: services.storage.download(forRepo: model.repoId),
                 isLoaded: loaded.contains(model.alias),
                 fits: MemoryPlanner.plan(loading: model, loaded: loadedModels, availableBytes: device.memory.availableBytes).fits,
-                activity: activities[model.alias]
+                activity: activities[model.alias],
+                contextWindow: services.contextWindows.tokens(for: model.alias)
             )
         }
         totalDownloadBytes = services.storage.totalDownloadBytes()
@@ -120,6 +124,7 @@ final class ModelManagerViewModel: Identifiable {
         guard tokens != contextWindow(for: row) else { return }
         let alias = row.model.alias
         services.contextWindows.set(tokens, for: alias)
+        Task { await refresh() }
         guard row.isLoaded else { return }
         run(alias) { [self] in
             await services.chat.unload(model: alias)
@@ -247,7 +252,10 @@ final class ModelManagerViewModel: Identifiable {
         }
         rows = rows.map { row in
             guard row.model.alias == alias else { return row }
-            return Row(model: row.model, download: row.download, isLoaded: row.isLoaded, fits: row.fits, activity: activity)
+            return Row(
+                model: row.model, download: row.download, isLoaded: row.isLoaded, fits: row.fits,
+                activity: activity, contextWindow: row.contextWindow
+            )
         }
     }
 

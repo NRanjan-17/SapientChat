@@ -168,7 +168,9 @@ final class ServeRouter {
                 parameterBillions: model.billions, estimatedMemoryBytes: model.estimatedMemoryBytes,
                 downloaded: download.isDownloaded, downloadedBytes: download.bytes,
                 loaded: resident.contains(model.alias),
-                fits: MemoryPlanner.plan(loading: model, loaded: loaded, availableBytes: device.memory.availableBytes).fits
+                fits: MemoryPlanner.plan(loading: model, loaded: loaded, availableBytes: device.memory.availableBytes).fits,
+                memory: Format.bytes(model.estimatedMemoryBytes),
+                sizeOnDisk: Format.bytes(download.bytes)
             )
         }
         return .json(CatalogResponse(

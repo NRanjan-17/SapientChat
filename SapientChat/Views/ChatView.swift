@@ -6,6 +6,7 @@ struct ChatView: View {
     let list: ChatListViewModel
     @State private var modelSelector: ModelSelectorViewModel?
     @State private var isShowingStats = false
+    @State private var isShowingContextWindow = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
@@ -40,9 +41,16 @@ struct ChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(viewModel.modelName, systemImage: "square.stack.3d.up", action: openModelSelector)
-                    .labelStyle(.titleAndIcon)
-                    .disabled(viewModel.isBusy)
+                Menu {
+                    Button("Change Model…", systemImage: "square.stack.3d.up", action: openModelSelector)
+                    if let model = viewModel.model, ContextWindowStore.isAdjustable(model) {
+                        Button("Context Window…", systemImage: "text.alignleft", action: showContextWindow)
+                    }
+                } label: {
+                    Label(viewModel.modelName, systemImage: "square.stack.3d.up")
+                        .labelStyle(.titleAndIcon)
+                }
+                .disabled(viewModel.isBusy)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Model Stats", systemImage: "chart.bar.xaxis", action: showStats)
@@ -57,6 +65,21 @@ struct ChatView: View {
         .sheet(isPresented: $isShowingStats) {
             ModelStatsSheet(viewModel: viewModel)
         }
+        .sheet(isPresented: $isShowingContextWindow) {
+            if let model = viewModel.model {
+                ContextWindowSheet(
+                    model: model,
+                    current: viewModel.contextWindow,
+                    isLoaded: viewModel.modelDetails != nil,
+                    onSave: viewModel.setContextWindow
+                )
+            }
+        }
+    }
+
+    private func showContextWindow() {
+        isShowingContextWindow = true
+        Task { await viewModel.refreshModelDetails() }
     }
 
     private func showStats() {

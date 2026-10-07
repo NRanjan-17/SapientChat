@@ -5,20 +5,49 @@ import Foundation
 /// by playing silence through the background audio mode. Only compiled
 /// into builds with `SAPIENT_BACKGROUND_SERVER` (Debug/sideload): Apple
 /// rejects App Store apps that use background audio for anything else.
-protocol BackgroundKeeping: AnyObject {
+nonisolated protocol BackgroundKeeping: AnyObject, Sendable {
     var isRunning: Bool { get }
-    func start() throws
-    func stop()
+    func start() async throws
+    func stop() async
 }
 
-final class SilentAudioKeeper: BackgroundKeeping {
+/// All audio work runs on the keeper's own serial queue, never the main
+/// thread: AVAudioSession calls can block, and on the main thread that
+/// freezes the UI (Xcode's "AVAudioSession Hang Risk").
+nonisolated final class SilentAudioKeeper: BackgroundKeeping, @unchecked Sendable {
+    private let queue = DispatchQueue(label: "SapientChat.SilentAudioKeeper")
+    // Everything below is touched only on `queue`.
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
     private var interruptionObserver: NSObjectProtocol?
-    private(set) var isRunning = false
+    private var running = false
 
-    func start() throws {
-        guard !isRunning else { return }
+    var isRunning: Bool { queue.sync { running } }
+
+    func start() async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            queue.async { [self] in
+                do {
+                    try startOnQueue()
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func stop() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            queue.async { [self] in
+                stopOnQueue()
+                continuation.resume()
+            }
+        }
+    }
+
+    private func startOnQueue() throws {
+        guard !running else { return }
         let session = AVAudioSession.sharedInstance()
         // Mixes with other audio, so music and calls carry on as usual.
         try session.setCategory(.playback, options: [.mixWithOthers])
@@ -33,13 +62,13 @@ final class SilentAudioKeeper: BackgroundKeeping {
         try engine.start()
         player.scheduleBuffer(silence, at: nil, options: .loops)
         try player.playAudio()
-        isRunning = true
+        running = true
         observeInterruptions()
     }
 
-    func stop() {
-        guard isRunning else { return }
-        isRunning = false
+    private func stopOnQueue() {
+        guard running else { return }
+        running = false
         if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
         interruptionObserver = nil
         player.stop()
@@ -53,25 +82,28 @@ final class SilentAudioKeeper: BackgroundKeeping {
     /// silence mixes with other audio, so resuming never cuts anyone off.
     private func observeInterruptions() {
         interruptionObserver = NotificationCenter.default.addObserver(
-            forName: AVAudioSession.resumptionRecommendationNotification, object: nil, queue: .main
+            forName: AVAudioSession.resumptionRecommendationNotification, object: nil, queue: nil
         ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self, self.isRunning else { return }
-                try? AVAudioSession.sharedInstance().setActive(true)
-                if !self.engine.isRunning { try? self.engine.start() }
-                try? self.player.playAudio()
-            }
+            guard let self else { return }
+            self.queue.async { self.resumeOnQueue() }
         }
+    }
+
+    private func resumeOnQueue() {
+        guard running else { return }
+        try? AVAudioSession.sharedInstance().setActive(true)
+        if !engine.isRunning { try? engine.start() }
+        try? player.playAudio()
     }
 
     enum KeeperError: Error { case noBuffer }
 }
 
 /// Builds without the background mode; nothing runs.
-final class NoBackgroundKeeper: BackgroundKeeping {
+nonisolated final class NoBackgroundKeeper: BackgroundKeeping {
     var isRunning: Bool { false }
-    func start() throws {}
-    func stop() {}
+    func start() async throws {}
+    func stop() async {}
 }
 
 /// Whether models load on the CPU. On while the server runs in the

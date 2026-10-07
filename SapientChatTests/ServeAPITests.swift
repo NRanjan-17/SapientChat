@@ -78,7 +78,8 @@ struct ServeRouterTests {
     private func body(_ response: HTTPResponse) async throws -> String {
         switch response.body {
         case .data(let data):
-            return String(decoding: data, as: UTF8.self)
+            // Plain JSON replies are pretty-printed; compare them compactly.
+            return compactJSON(String(decoding: data, as: UTF8.self))
         case .stream(let chunks):
             var data = Data()
             for try await chunk in chunks { data.append(chunk) }
@@ -364,4 +365,10 @@ struct HandoffTests {
         #expect(handoff.state == .idle)
         #expect(await eventually { opened.first?.path() == "/cancel" })
     }
+}
+
+/// A pretty-printed JSON reply as one compact line, for substring checks.
+func compactJSON(_ text: String) -> String {
+    text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.joined()
+        .replacingOccurrences(of: "\" : ", with: "\":")
 }

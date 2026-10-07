@@ -218,6 +218,9 @@ nonisolated struct CatalogResponse: Codable, Sendable {
         let loaded: Bool
         /// Whether it should fit in memory now (releasing other models if needed).
         let fits: Bool
+        /// The two sizes above for people: "1.5 GB".
+        let memory: String
+        let sizeOnDisk: String
     }
 
     var object = "list"
@@ -245,6 +248,20 @@ nonisolated struct DownloadEvent: Codable, Sendable {
     let downloadedBytes: UInt64
     /// 0 when the size isn't known yet.
     let totalBytes: UInt64
+    /// For people: "45%" (nil until the size is known), "412 MB of 1.1 GB".
+    var progress: String?
+    var size: String?
+
+    init(model: String, status: String, downloadedBytes: UInt64, totalBytes: UInt64) {
+        self.model = model
+        self.status = status
+        self.downloadedBytes = downloadedBytes
+        self.totalBytes = totalBytes
+        if totalBytes > 0 {
+            progress = "\(min(100, downloadedBytes * 100 / totalBytes))%"
+            size = "\(Format.bytes(downloadedBytes)) of \(Format.bytes(totalBytes))"
+        }
+    }
 }
 
 /// The device side of `/v1/health`.

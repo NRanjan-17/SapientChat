@@ -61,7 +61,8 @@ final class ServerViewModel: Identifiable {
         #endif
     }()
 
-    /// Keep serving with the app in the background (silent audio, CPU only).
+    /// The user's choice to keep serving with the app in the background.
+    /// It applies only while the server is on (`isServingInBackground`).
     private(set) var runsInBackground: Bool
     /// Why background mode couldn't start, if it failed.
     private(set) var backgroundError: String?
@@ -80,6 +81,8 @@ final class ServerViewModel: Identifiable {
     /// The user turned the server on (it may be paused in the background).
     @ObservationIgnored private var wantsRunning = false
     @ObservationIgnored private let keeper: any BackgroundKeeping
+    /// Keeper starts and stops run one after another, in the order asked.
+    @ObservationIgnored private var keeperTask: Task<Void, Never>?
     @ObservationIgnored private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
     /// The Dynamic Island while serving in the background.
     @ObservationIgnored let serverActivity: ServerLiveActivity
@@ -98,9 +101,9 @@ final class ServerViewModel: Identifiable {
         // start their own otherwise.
         router.liveActivities = serverActivity
         self.keeper = keeper ?? Self.defaultKeeper()
-        let runsInBackground = Self.canRunInBackground && defaults.bool(forKey: Keys.runsInBackground)
-        self.runsInBackground = runsInBackground
-        defaults.set(runsInBackground, forKey: EngineBackendPreference.cpuOnlyKey)
+        runsInBackground = Self.canRunInBackground && defaults.bool(forKey: Keys.runsInBackground)
+        // The server starts off, so the app starts as a normal app: GPU models.
+        defaults.set(false, forKey: EngineBackendPreference.cpuOnlyKey)
         let savedPort = defaults.integer(forKey: Keys.port)
         port = (1...Int(UInt16.max)).contains(savedPort) ? UInt16(savedPort) : Self.defaultPort
         allowsNetwork = defaults.object(forKey: Keys.allowsNetwork) as? Bool ?? true
@@ -113,6 +116,12 @@ final class ServerViewModel: Identifiable {
     var isOn: Bool {
         get { wantsRunning }
         set { newValue ? start() : stop() }
+    }
+
+    /// The server is on and set to keep running in the background. Only then
+    /// does anything keep the app alive; otherwise it closes like any app.
+    var isServingInBackground: Bool {
+        wantsRunning && runsInBackground
     }
 
     /// Catalog models, for the Try It commands.
@@ -153,16 +162,12 @@ final class ServerViewModel: Identifiable {
         updateKeeper()
     }
 
-    /// Turns background serving on or off. Models in memory are released so
-    /// they reload on the right hardware (CPU in the background, else GPU).
+    /// Saves the background choice; it takes effect while the server is on.
     func setRunsInBackground(_ on: Bool) {
         guard Self.canRunInBackground, on != runsInBackground else { return }
         runsInBackground = on
         backgroundError = nil
         defaults.set(on, forKey: Keys.runsInBackground)
-        defaults.set(on, forKey: EngineBackendPreference.cpuOnlyKey)
-        let router = router
-        Task { await router.releaseAllModels() }
         updateKeeper()
     }
 
@@ -208,26 +213,53 @@ final class ServerViewModel: Identifiable {
         #endif
     }
 
-    /// Silent audio and the server's Dynamic Island run only while the
-    /// server is on with background mode on.
+    /// Silent audio, CPU-only models and the server's Dynamic Island run
+    /// only while serving in the background. Otherwise all three are off, so
+    /// the app suspends and closes normally.
     private func updateKeeper() {
-        defer { updateServerActivity() }
-        if wantsRunning && runsInBackground {
+        defer {
+            updateEngineBackend()
+            updateServerActivity()
+        }
+        let wantsKeeper = isServingInBackground
+        let keeper = keeper
+        let previous = keeperTask
+        keeperTask = Task { [weak self] in
+            await previous?.value
+            guard wantsKeeper else { return await keeper.stop() }
             do {
-                try keeper.start()
+                try await keeper.start()
             } catch {
-                backgroundError = "Couldn't keep running in the background: \(error.localizedDescription)"
-                runsInBackground = false
-                defaults.set(false, forKey: Keys.runsInBackground)
-                defaults.set(false, forKey: EngineBackendPreference.cpuOnlyKey)
+                self?.keeperFailed(error)
             }
-        } else {
-            keeper.stop()
         }
     }
 
+    private func keeperFailed(_ error: any Error) {
+        backgroundError = "Couldn't keep running in the background: \(error.localizedDescription)"
+        runsInBackground = false
+        defaults.set(false, forKey: Keys.runsInBackground)
+        updateKeeper()
+    }
+
+    /// Waits for keeper starts and stops already asked for (for tests).
+    func keeperSettled() async {
+        await keeperTask?.value
+    }
+
+    /// CPU while serving in the background (iOS allows no GPU work there),
+    /// GPU otherwise. Loaded models are released when it changes, so they
+    /// reload on the right one.
+    private func updateEngineBackend() {
+        let cpuOnly = isServingInBackground
+        guard cpuOnly != EngineBackendPreference.cpuOnly(defaults) else { return }
+        defaults.set(cpuOnly, forKey: EngineBackendPreference.cpuOnlyKey)
+        let router = router
+        Task { await router.releaseAllModels() }
+    }
+
     private func updateServerActivity() {
-        if wantsRunning && runsInBackground {
+        if isServingInBackground {
             serverActivity.begin(endpoint: endpoints.last.map { $0.url.replacing("http://", with: "") } ?? "port \(port)")
         } else {
             serverActivity.finish()

@@ -98,8 +98,10 @@ nonisolated struct HTTPResponse: Sendable {
     var headers: [String: String] = [:]
     var body: Body
 
+    /// Pretty-printed, ending in a newline so a shell prompt starts on its own line.
     static func json<Value: Encodable>(_ value: Value, status: Int = 200) -> HTTPResponse {
-        let data = (try? APIJSON.encoder.encode(value)) ?? Data("{}".utf8)
+        var data = (try? APIJSON.prettyEncoder.encode(value)) ?? Data("{}".utf8)
+        data.append(0x0A)
         return HTTPResponse(status: status, contentType: "application/json; charset=utf-8", body: .data(data))
     }
 
@@ -164,10 +166,18 @@ nonisolated struct HTTPResponse: Sendable {
 
 /// The JSON coding `sapient serve` and OpenAI clients use: snake_case keys.
 nonisolated enum APIJSON {
+    /// Compact, keys sorted: one server-sent event must be one line.
     static var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
-        encoder.outputFormatting = [.withoutEscapingSlashes]
+        encoder.outputFormatting = [.withoutEscapingSlashes, .sortedKeys]
+        return encoder
+    }
+
+    /// Indented, keys sorted: plain JSON replies, easy to read in a terminal.
+    static var prettyEncoder: JSONEncoder {
+        let encoder = encoder
+        encoder.outputFormatting = [.withoutEscapingSlashes, .sortedKeys, .prettyPrinted]
         return encoder
     }
 

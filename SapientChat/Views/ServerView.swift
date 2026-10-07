@@ -29,6 +29,7 @@ struct ServerView: View {
             Section {
                 if ServerViewModel.canRunInBackground {
                     Toggle("Keep running in background", isOn: runsInBackground)
+                        .disabled(!viewModel.isOn)
                 }
                 if let error = viewModel.backgroundError {
                     Text(error)
@@ -118,15 +119,20 @@ struct ServerView: View {
         }
     }
 
-    /// Turning on asks first (battery); turning off doesn't.
+    /// Shows off (and is disabled) while the server is off. Turning on asks
+    /// first (battery); turning off doesn't.
     private var runsInBackground: Binding<Bool> {
-        Binding { viewModel.runsInBackground } set: { on in
+        Binding { viewModel.isServingInBackground } set: { on in
             if on { isConfirmingBackground = true } else { viewModel.setRunsInBackground(false) }
         }
     }
 
     private var backgroundFooter: String {
-        if viewModel.runsInBackground {
+        if ServerViewModel.canRunInBackground && !viewModel.isOn {
+            return "Turn on the server to choose whether it keeps running in the background. "
+                + "While it's off, SapientChat closes like any other app."
+        }
+        if viewModel.isServingInBackground {
             return "Running with the app closed, on the CPU. Uses more battery; turn off when you don't need it."
         }
         return "With the app closed, requests already running get about 30 seconds to finish, then the server pauses "
