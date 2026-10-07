@@ -12,10 +12,13 @@ nonisolated struct ChatMessage: Identifiable, Equatable, Sendable {
     let id: UUID
     let role: Role
     var text: String
+    /// How the reply was generated (assistant messages measured in the app).
+    var stats: ReplyStats?
 
-    init(id: UUID = UUID(), role: Role, text: String) {
+    init(id: UUID = UUID(), role: Role, text: String, stats: ReplyStats? = nil) {
         self.id = id
         self.role = role
         self.text = text
+        self.stats = stats
     }
 }

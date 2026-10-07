@@ -131,3 +131,10 @@ extension BenchmarkViewModel {
         BenchmarkViewModel(model: "smollm2-1.7b-q4", service: PreviewBenchmarkService(), state: .finished(.sample))
     }
 }
+
+nonisolated extension ReplyStats {
+    static let sample = ReplyStats(
+        firstTokenMs: 312, tokensPerSecond: 27.4, pieces: 128, durationMs: 4_800,
+        loadMs: 1_840, model: "openhorizon/smollm2-1.7b-q4", backend: "wgpu (Apple GPU (Metal))"
+    )
+}

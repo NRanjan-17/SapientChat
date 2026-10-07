@@ -36,6 +36,11 @@ nonisolated struct LoadedSlots<Session> {
         return released
     }
 
+    /// The session for `model` without marking it used.
+    func peek(_ model: String) -> Session? {
+        entries.first { $0.model == model }?.session
+    }
+
     mutating func remove(_ model: String) {
         entries.removeAll { $0.model == model }
     }

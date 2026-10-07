@@ -6,6 +6,10 @@ nonisolated struct PreviewChatService: ChatService {
         "preview"
     }
 
+    func details(model: String) async -> LoadedModelDetails? {
+        LoadedModelDetails(backend: "preview", contextLength: 3072, loadTimeMs: 1_840)
+    }
+
     func loadedModels() async -> [String] {
         []
     }

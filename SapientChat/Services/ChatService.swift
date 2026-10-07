@@ -9,6 +9,10 @@ nonisolated protocol ChatService: Sendable {
     /// Models in memory, most recently used first.
     func loadedModels() async -> [String]
 
+    /// What the engine reports about a loaded `model` (nil if not loaded).
+    /// Doesn't count as using it.
+    func details(model: String) async -> LoadedModelDetails?
+
     /// Releases one model's memory.
     func unload(model: String) async
 

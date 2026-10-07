@@ -36,6 +36,15 @@ actor SapientChatService: ChatService {
         return loaded.backendLabel()
     }
 
+    func details(model: String) -> LoadedModelDetails? {
+        guard let session = slots.peek(model) else { return nil }
+        return LoadedModelDetails(
+            backend: session.backendLabel(),
+            contextLength: Int(session.contextLength()),
+            loadTimeMs: session.loadTimeMs()
+        )
+    }
+
     func loadedModels() -> [String] {
         slots.models
     }

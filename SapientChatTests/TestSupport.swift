@@ -45,6 +45,10 @@ actor ControlledChatService {
 
     func loadedModels() async -> [String] { active }
 
+    func details(model: String) async -> LoadedModelDetails? {
+        active.contains(model) ? LoadedModelDetails(backend: "test-backend", contextLength: 8192, loadTimeMs: 1) : nil
+    }
+
     func unload(model: String) async {
         unloadCount += 1
         active.removeAll { $0 == model }

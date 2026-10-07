@@ -13,6 +13,9 @@ final class StoredMessage {
     /// Position in the conversation; `createdAt` alone can tie.
     var order: Int
     var conversation: Conversation?
+    /// Speed and timing of a generated reply; nil for user messages and
+    /// for replies saved before stats existed.
+    var stats: ReplyStats?
 
     init(role: ChatMessage.Role, text: String, order: Int, now: Date = .now) {
         id = UUID()
@@ -23,6 +26,6 @@ final class StoredMessage {
     }
 
     var chatMessage: ChatMessage {
-        ChatMessage(id: id, role: ChatMessage.Role(rawValue: role) ?? .assistant, text: text)
+        ChatMessage(id: id, role: ChatMessage.Role(rawValue: role) ?? .assistant, text: text, stats: stats)
     }
 }

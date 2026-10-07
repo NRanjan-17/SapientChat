@@ -10,12 +10,18 @@ final class ChatViewModel {
     private(set) var messages: [ChatMessage]
     private(set) var status: ChatStatus = .idle
     private(set) var backendLabel: String?
+    /// Speed of the reply streaming right now (≈ tok/s), updated twice a second.
+    private(set) var liveTokensPerSecond: Double?
+    /// Engine details of this chat's model, for the Model Stats sheet.
+    private(set) var modelDetails: LoadedModelDetails?
+    /// Display names of the models in memory, most recently used first.
+    private(set) var loadedModelNames: [String] = []
     var draft = ""
 
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private let store: any ConversationStore
     /// Shared app-wide state (memory, thermal) owned by the chat list.
-    @ObservationIgnored private let device: DeviceStatus
+    @ObservationIgnored let device: DeviceStatus
     @ObservationIgnored private var replyTask: Task<Void, Never>?
     /// The stored reply of the turn in flight; Clear/Stop compare against it.
     @ObservationIgnored private var currentReplyID: UUID?
@@ -71,7 +77,7 @@ final class ChatViewModel {
                 .compactMap { $0 }.joined(separator: " · ") + thermal
         case .downloading(let model, let progress): "Downloading \(model) · \(progress.text)"
         case .loading(let model): "Loading \(model) into memory…"
-        case .generating: "Generating…" + thermal
+        case .generating: "Generating" + (liveTokensPerSecond.map { " · \(Format.rate($0)) tok/s" } ?? "…") + thermal
         case .failed(let message): "Error: \(message)"
         }
     }
@@ -136,32 +142,80 @@ final class ChatViewModel {
 
     private func runTurn(history: [ChatMessage], modelAlias: String, reply: StoredMessage) async {
         let name = model?.displayName ?? modelAlias
+        var meter = ReplyStatsMeter()
+        var loadMs: Int?
+        defer { liveTokensPerSecond = nil }
         do {
             // Plans memory (refusing a model that can't fit, instead of
             // letting iOS kill the app), downloads on first use, loads.
+            let prepareStart = ContinuousClock.now
+            var hadToLoad = false
             backendLabel = try await ModelPreparer(services: services, device: device).prepare(modelAlias) { phase in
+                hadToLoad = true
                 guard currentReplyID == reply.id else { return }
                 status = switch phase {
                 case .downloading(let progress): .downloading(model: name, progress: progress)
                 case .loading: .loading(model: name)
                 }
             }
+            if hadToLoad { loadMs = (ContinuousClock.now - prepareStart).milliseconds }
             try Task.checkCancellation()
             guard currentReplyID == reply.id else { return }
             status = .generating
 
-            var lastSave = ContinuousClock.now
+            let requested = ContinuousClock.now
+            var lastSave = requested
+            var lastLiveUpdate = requested
             for try await token in try await services.chat.reply(to: history, model: modelAlias) {
                 guard currentReplyID == reply.id else { return }
+                let now = ContinuousClock.now
+                meter.record(at: now - requested)
                 append(token, to: reply)
-                if ContinuousClock.now - lastSave >= saveInterval {
+                if now - lastLiveUpdate >= .milliseconds(500) {
+                    liveTokensPerSecond = meter.tokensPerSecond
+                    lastLiveUpdate = now
+                }
+                if now - lastSave >= saveInterval {
                     store.save()
-                    lastSave = .now
+                    lastSave = now
                 }
             }
+            attach(meter.stats(model: modelAlias, backend: backendLabel, loadMs: loadMs), to: reply)
             finishTurn(reply: reply, error: nil)
         } catch {
+            // A reply stopped or failed part-way keeps the stats of what arrived.
+            attach(meter.stats(model: modelAlias, backend: backendLabel, loadMs: loadMs), to: reply)
             finishTurn(reply: reply, error: error)
+        }
+    }
+
+    private func attach(_ stats: ReplyStats?, to reply: StoredMessage) {
+        guard let stats, currentReplyID == reply.id else { return }
+        reply.stats = stats
+        if let index = messages.lastIndex(where: { $0.id == reply.id }) {
+            messages[index].stats = stats
+        }
+    }
+
+    // MARK: Model stats
+
+    /// Averages over this chat's measured replies.
+    var chatSummary: ChatStatsSummary {
+        ChatStatsSummary(messages.compactMap(\.stats))
+    }
+
+    /// The most recent measured reply.
+    var lastReplyStats: ReplyStats? {
+        messages.last { $0.stats != nil }?.stats
+    }
+
+    /// Reads engine details for the Model Stats sheet.
+    func refreshModelDetails() async {
+        device.refreshMemory()
+        modelDetails = await services.chat.details(model: conversation.modelAlias)
+        let catalog = services.catalog.chatModels()
+        loadedModelNames = await services.chat.loadedModels().map { alias in
+            catalog.first { $0.alias == alias }?.displayName ?? alias
         }
     }
 

@@ -5,6 +5,7 @@ struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     let list: ChatListViewModel
     @State private var modelSelector: ModelSelectorViewModel?
+    @State private var isShowingStats = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
@@ -43,6 +44,9 @@ struct ChatView: View {
                     .labelStyle(.titleAndIcon)
                     .disabled(viewModel.isBusy)
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Model Stats", systemImage: "chart.bar.xaxis", action: showStats)
+            }
         }
         // On iPhone a chat gets the whole screen; on iPad it sits beside the
         // list, where the tabs stay reachable.
@@ -50,6 +54,13 @@ struct ChatView: View {
         .sheet(item: $modelSelector) { selector in
             ModelSelectorView(viewModel: selector)
         }
+        .sheet(isPresented: $isShowingStats) {
+            ModelStatsSheet(viewModel: viewModel)
+        }
+    }
+
+    private func showStats() {
+        isShowingStats = true
     }
 
     private func sendSuggestion(_ text: String) {

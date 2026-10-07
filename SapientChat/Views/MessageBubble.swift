@@ -26,6 +26,21 @@ struct MessageBubble: View {
                 if canRegenerate {
                     Button(isUser ? "Retry" : "Regenerate", systemImage: "arrow.clockwise", action: onRegenerate)
                 }
+                if let stats = message.stats {
+                    Section("Stats") {
+                        if let speed = stats.tokensPerSecond {
+                            Text("\(Format.rate(speed)) tok/s")
+                        }
+                        Text("First token in \(stats.firstTokenMs) ms")
+                        Text("\(stats.pieces) tokens in \(Format.rate(Double(stats.durationMs) / 1000)) s")
+                        if let loadMs = stats.loadMs {
+                            Text("Model loaded in \(Format.rate(Double(loadMs) / 1000)) s")
+                        }
+                        if let backend = stats.backend {
+                            Text(backend)
+                        }
+                    }
+                }
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(isUser ? "You" : "Assistant")

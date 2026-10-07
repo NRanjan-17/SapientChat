@@ -8,6 +8,7 @@ struct MessageListView: View {
     let onRegenerate: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(AppSettings.showReplyStats) private var showReplyStats = true
 
     var body: some View {
         ScrollView {
@@ -18,11 +19,18 @@ struct MessageListView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .transition(.opacity)
                     } else {
-                        MessageBubble(
-                            message: message,
-                            canRegenerate: canRegenerate && message.id == messages.last?.id,
-                            onRegenerate: onRegenerate
-                        )
+                        VStack(alignment: .leading, spacing: 4) {
+                            MessageBubble(
+                                message: message,
+                                canRegenerate: canRegenerate && message.id == messages.last?.id,
+                                onRegenerate: onRegenerate
+                            )
+                            if showReplyStats, let stats = message.stats {
+                                ReplyStatsLine(stats: stats)
+                                    .padding(.leading, 6)
+                                    .transition(.opacity)
+                            }
+                        }
                         .transition(transition(for: message))
                     }
                 }

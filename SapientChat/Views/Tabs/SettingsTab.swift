@@ -4,10 +4,19 @@ import SwiftUI
 /// engine and device.
 struct SettingsTab: View {
     @Bindable var server: ServerViewModel
+    @AppStorage(AppSettings.showReplyStats) private var showReplyStats = true
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Toggle("Show reply stats", systemImage: "gauge.with.dots.needle.33percent", isOn: $showReplyStats)
+                } header: {
+                    Text("Chat")
+                } footer: {
+                    Text("Speed and timing under each reply. The chart button in a chat shows more.")
+                }
+
                 Section {
                     Toggle(isOn: $server.isOn) {
                         Label(server.statusTitle, systemImage: "network")
