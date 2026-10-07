@@ -19,6 +19,8 @@ final class BenchmarkViewModel: Identifiable {
     let availableModels: [PhoneModel]
     var settings = BenchmarkSettings()
     private(set) var state: State = .idle
+    /// Runs finished so far in the current benchmark, shown as they come.
+    private(set) var completedRuns: [BenchmarkRunResult] = []
 
     @ObservationIgnored private let service: any BenchmarkService
     /// Told whether the benchmark finished (true) or failed (false).
@@ -60,6 +62,7 @@ final class BenchmarkViewModel: Identifiable {
         guard canRun else { return }
         let settings = settings
         state = .running(BenchmarkProgress(completed: 0, total: settings.totalRuns, lastRun: nil))
+        completedRuns = []
         let activity = LiveActivityTracker(service: liveActivities, title: "Benchmark")
         activity.start(model: availableModels.first { $0.alias == model }?.displayName ?? model)
         activity.benchmark(completed: 0, total: settings.totalRuns, lastRun: nil)
@@ -86,6 +89,9 @@ final class BenchmarkViewModel: Identifiable {
         // never overwrite a finished state.
         guard case .running(let current) = state, progress.completed > current.completed else { return }
         state = .running(progress)
+        if let run = progress.lastRun, !completedRuns.contains(where: { $0.id == run.id }) {
+            completedRuns.append(run)
+        }
         activity?.benchmark(completed: progress.completed, total: progress.total, lastRun: progress.lastRun)
     }
 

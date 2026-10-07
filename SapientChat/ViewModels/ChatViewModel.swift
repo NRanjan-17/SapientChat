@@ -73,13 +73,21 @@ final class ChatViewModel {
         let thermal = device.thermal.label.map { " · \($0)" } ?? ""
         return switch status {
         case .idle:
-            [modelName, backendLabel, device.memory.footprintBytes.map { "\(Format.bytes($0)) used" }]
-                .compactMap { $0 }.joined(separator: " · ") + thermal
+            // Short: memory and thermal detail live in Model Stats.
+            [modelName, backendLabel.map(Self.hardware)].compactMap { $0 }.joined(separator: " · ")
         case .downloading(let model, let progress): "Downloading \(model) · \(progress.text)"
         case .loading(let model): "Loading \(model) into memory…"
         case .generating: "Generating" + (liveTokensPerSecond.map { " · \(Format.rate($0)) tok/s" } ?? "…") + thermal
         case .failed(let message): "Error: \(message)"
         }
+    }
+
+    /// "CPU + GPU", "GPU" or "CPU" from an engine label like
+    /// "wgpu (Apple A14 GPU (Metal))" or "hybrid: prompt on … · generation on cpu".
+    nonisolated static func hardware(_ backend: String) -> String {
+        let lower = backend.lowercased()
+        if lower.hasPrefix("hybrid") { return "CPU + GPU" }
+        return lower.contains("cpu") ? "CPU" : (lower.contains("gpu") || lower.contains("metal")) ? "GPU" : backend
     }
 
     // MARK: Actions

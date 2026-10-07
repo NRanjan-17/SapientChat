@@ -1,17 +1,13 @@
 import SwiftUI
 
 /// Measures the selected model on this device: settings, Run/Cancel,
-/// progress and results.
+/// progress, each run as it finishes, and the results.
 struct BenchmarkView: View {
     @Bindable var viewModel: BenchmarkViewModel
     let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
 
     var body: some View {
-        form.readableContentWidth(720)
-    }
-
-    private var form: some View {
-        Form {
+        SetupResultsLayout {
             Section {
                 if viewModel.availableModels.isEmpty {
                     LabeledContent("Model", value: viewModel.model)
@@ -21,7 +17,9 @@ struct BenchmarkView: View {
                     }
                 }
             } footer: {
-                Text("A model a chat already has in memory is reused, not loaded again. Your conversations are kept.")
+                Text(viewModel.isRunning
+                    ? "Locked while the benchmark runs."
+                    : "A model a chat already has in memory is reused, not loaded again. Your conversations are kept.")
             }
             .disabled(viewModel.isRunning)
 
@@ -34,9 +32,24 @@ struct BenchmarkView: View {
                 onRun: viewModel.run,
                 onCancel: viewModel.cancel
             )
-
+        } results: {
+            if !viewModel.completedRuns.isEmpty && viewModel.isRunning {
+                Section("Finished runs") {
+                    ForEach(viewModel.completedRuns) { run in
+                        BenchmarkRunRow(run: run)
+                    }
+                }
+            }
             if let result = viewModel.result {
                 BenchmarkResultsSection(result: result)
+            } else if !viewModel.isRunning {
+                Section {
+                    ContentUnavailableView(
+                        "No results yet",
+                        systemImage: "gauge.with.dots.needle.67percent",
+                        description: Text("Run a benchmark to measure decode speed, first-token time and memory on this device.")
+                    )
+                }
             }
         }
         .toolbar {

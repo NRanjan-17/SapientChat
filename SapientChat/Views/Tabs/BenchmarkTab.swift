@@ -17,21 +17,23 @@ struct BenchmarkTab: View {
                 case .compare: CompareView(viewModel: compare, makeSelector: makeSelector)
                 }
             }
+            // In the page, not the toolbar: there the selected segment
+            // didn't show on iPad.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Picker("Mode", selection: $mode) {
+                    ForEach(BenchmarkMode.allCases, id: \.self) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 360)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                // Switching mid-run would hide the run's progress.
+                .disabled(isRunning)
+            }
             .navigationTitle("Benchmark")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Picker("Mode", selection: $mode) {
-                        ForEach(BenchmarkMode.allCases, id: \.self) { mode in
-                            Text(mode.title).tag(mode)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .fixedSize()
-                    // Switching mid-run would hide the run's progress.
-                    .disabled(isRunning)
-                }
-            }
         }
     }
 }

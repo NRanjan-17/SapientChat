@@ -18,11 +18,14 @@ struct RootView: View {
                 BenchmarkTab(benchmark: viewModel.benchmark, compare: viewModel.compare, makeSelector: viewModel.makeModelSelector)
             }
             Tab(AppTab.settings.title, systemImage: AppTab.settings.symbol, value: .settings) {
-                SettingsTab(server: viewModel.server)
+                SettingsTab(server: viewModel.server) {
+                    Task { await viewModel.models.unloadAll() }
+                }
             }
         }
-        // A sidebar on iPad (collapsible), the tab bar on iPhone.
-        .tabViewStyle(.sidebarAdaptable)
+        // The sections always sit in the tab bar: across the top on iPad,
+        // at the bottom on iPhone (no sidebar).
+        .tabViewStyle(.tabBarOnly)
         // An overlay, not a safe-area inset: an inset on the TabView pushes
         // every tab's navigation bar down even while the banner is empty.
         .overlay(alignment: .top) {

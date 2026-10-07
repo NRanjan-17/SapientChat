@@ -9,10 +9,11 @@ struct MessageListView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppSettings.showReplyStats) private var showReplyStats = true
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            LazyVStack(spacing: horizontalSizeClass == .regular ? 18 : 12) {
                 ForEach(messages) { message in
                     if message.role == .assistant && message.text.isEmpty {
                         TypingIndicator()
@@ -27,7 +28,8 @@ struct MessageListView: View {
                             )
                             if showReplyStats, let stats = message.stats {
                                 ReplyStatsLine(stats: stats)
-                                    .padding(.leading, 6)
+                                    // Under the reply's text: plain on iPad, inset in a bubble.
+                                    .padding(.leading, horizontalSizeClass == .regular ? 0 : 6)
                                     .transition(.opacity)
                             }
                         }
@@ -38,7 +40,9 @@ struct MessageListView: View {
             .padding()
             .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.8), value: messages.count)
         }
-        .readableContentWidth(760)
+        .readableContentWidth(720)
+        // A solid edge under the title, so text never shows through it.
+        .scrollEdgeEffectStyle(.hard, for: .top)
         .defaultScrollAnchor(.bottom)
         .defaultScrollAnchor(.bottom, for: .sizeChanges)
         .scrollDismissesKeyboard(.interactively)

@@ -16,7 +16,10 @@ private struct ReadableContentMargins: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .contentMargins(.horizontal, max(0, (width - maxWidth) / 2), for: .scrollContent)
+            // Only when the screen is wider than the column. nil keeps the
+            // system's own margins: a 0 here would remove them, putting
+            // grouped sections edge to edge with square corners.
+            .contentMargins(.horizontal, width > maxWidth ? max(20, (width - maxWidth) / 2) : nil, for: .scrollContent)
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
     }
 }
