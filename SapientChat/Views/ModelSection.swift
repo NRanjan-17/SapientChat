@@ -13,7 +13,7 @@ struct ModelSection: View {
         if !rows.isEmpty {
             Section {
                 ForEach(rows) { row in
-                    ModelRow(row: row, canSelect: canSelect, onSelect: onSelect)
+                    ModelRow(row: row, canSelect: canSelect && row.fits, onSelect: onSelect)
                         .contextMenu {
                             if row.download.isDownloaded {
                                 Button("Delete Download", systemImage: "trash", role: .destructive) { onDelete(row) }

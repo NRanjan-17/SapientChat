@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Pick a model for the chat and manage downloads: models that fit this
-/// device first, then the ones that don't, each with its download state.
+/// Pick a model for the chat and manage downloads: downloaded models first,
+/// then the rest. Models too large for this device right now can't be picked.
 struct ModelSelectorView: View {
     @Bindable var viewModel: ModelSelectorViewModel
     @Environment(\.dismiss) private var dismiss
@@ -13,17 +13,17 @@ struct ModelSelectorView: View {
         NavigationStack {
             List {
                 ModelSection(
-                    title: "Fits this device",
-                    rows: viewModel.fittingRows,
+                    title: "Downloaded",
+                    rows: viewModel.downloadedRows,
                     canSelect: viewModel.canSelect,
                     onSelect: select,
                     onDelete: confirmDelete
                 )
                 ModelSection(
-                    title: "Too large right now",
-                    footer: "Estimated from the model's size and the memory iOS currently gives this app.",
-                    rows: viewModel.tooLargeRows,
-                    canSelect: false,
+                    title: "Not downloaded",
+                    footer: "Models download the first time you use them.",
+                    rows: viewModel.notDownloadedRows,
+                    canSelect: viewModel.canSelect,
                     onSelect: select,
                     onDelete: confirmDelete
                 )

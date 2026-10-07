@@ -16,19 +16,26 @@ struct ModelSelectorViewModelTests {
         return ModelSelectorViewModel(selected: TestModels.small.alias, services: services, device: device, onSelect: onSelect)
     }
 
-    @Test func groupsModelsByWhetherTheyFit() async {
+    @Test func groupsModelsByWhetherTheyAreDownloaded() async {
         let selector = makeSelector()
         await selector.refresh()
-        #expect(selector.fittingRows.map(\.model.alias) == [TestModels.small.alias])
-        #expect(selector.tooLargeRows.map(\.model.alias) == [TestModels.big.alias])
-        #expect(selector.fittingRows.first?.isSelected == true)
+        #expect(selector.downloadedRows.map(\.model.alias) == [TestModels.small.alias])
+        #expect(selector.notDownloadedRows.map(\.model.alias) == [TestModels.big.alias])
+        #expect(selector.downloadedRows.first?.isSelected == true)
+    }
+
+    @Test func aModelTooLargeToLoadStaysInItsDownloadSection() async {
+        let selector = makeSelector()
+        await selector.refresh()
+        let big = try! #require(selector.notDownloadedRows.first)
+        #expect(!big.fits)
     }
 
     @Test func showsWhatIsDownloaded() async {
         let selector = makeSelector()
         await selector.refresh()
-        #expect(selector.fittingRows.first?.download == .downloaded(bytes: 105_000_000))
-        #expect(selector.tooLargeRows.first?.download == .notDownloaded)
+        #expect(selector.downloadedRows.first?.download == .downloaded(bytes: 105_000_000))
+        #expect(selector.notDownloadedRows.first?.download == .notDownloaded)
         #expect(selector.totalDownloadBytes == 105_000_000)
     }
 
@@ -36,14 +43,14 @@ struct ModelSelectorViewModelTests {
         let selector = makeSelector(memory: FixedMemory())
         await selector.refresh()
         selector.searchText = "1.7b"
-        #expect(selector.fittingRows.map(\.model.alias) == [TestModels.big.alias])
+        #expect(selector.notDownloadedRows.map(\.model.alias) == [TestModels.big.alias])
     }
 
     @Test func selectingReportsTheModel() async {
         var picked: String?
         let selector = makeSelector(memory: FixedMemory(), onSelect: { picked = $0 })
         await selector.refresh()
-        let big = try! #require(selector.fittingRows.first { $0.model == TestModels.big })
+        let big = try! #require(selector.notDownloadedRows.first { $0.model == TestModels.big })
         selector.select(big)
         #expect(picked == TestModels.big.alias)
         #expect(selector.selectedAlias == TestModels.big.alias)
@@ -54,7 +61,7 @@ struct ModelSelectorViewModelTests {
         _ = try await service.load(model: TestModels.small.alias)
         let selector = makeSelector(storage: storage)
         await selector.refresh()
-        let row = try #require(selector.fittingRows.first)
+        let row = try #require(selector.downloadedRows.first)
         #expect(row.isLoaded)
 
         await selector.deleteDownload(row)

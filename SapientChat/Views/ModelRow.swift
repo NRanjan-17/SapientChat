@@ -37,7 +37,10 @@ struct ModelRow: View {
     }
 
     @ViewBuilder private var status: some View {
-        if row.isLoaded {
+        if !row.fits {
+            IconText("Needs more memory than iOS allows now", systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+        } else if row.isLoaded {
             IconText("In memory", systemImage: "memorychip.fill")
                 .foregroundStyle(.green)
         } else {

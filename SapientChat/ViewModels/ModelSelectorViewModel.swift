@@ -36,8 +36,10 @@ final class ModelSelectorViewModel: Identifiable {
 
     var canSelect: Bool { onSelect != nil }
 
-    var fittingRows: [Row] { filtered.filter(\.fits) }
-    var tooLargeRows: [Row] { filtered.filter { !$0.fits } }
+    /// Models fully on this device, in catalog order.
+    var downloadedRows: [Row] { filtered.filter(\.download.isDownloaded) }
+    /// Everything else (including paused downloads), in catalog order.
+    var notDownloadedRows: [Row] { filtered.filter { !$0.download.isDownloaded } }
 
     private var filtered: [Row] {
         guard !searchText.isEmpty else { return rows }
