@@ -44,10 +44,20 @@ final class ModelManagerViewModel: Identifiable {
         self.onNewChat = onNewChat
     }
 
-    var loadedRows: [Row] { rows.filter(\.isLoaded) }
+    /// Order within each section, by the memory a model needs.
+    var sort: ModelSort = .smallestFirst
+
+    var loadedRows: [Row] { sorted(rows.filter(\.isLoaded)) }
     /// Models downloading or loading right now.
     var activeRows: [Row] { rows.filter { $0.activity != nil } }
-    var otherRows: [Row] { rows.filter { !$0.isLoaded } }
+    /// Downloaded but not in memory.
+    var downloadedRows: [Row] { sorted(rows.filter { !$0.isLoaded && $0.download.isDownloaded }) }
+    /// Not on this device yet, including paused downloads.
+    var notDownloadedRows: [Row] { sorted(rows.filter { !$0.isLoaded && !$0.download.isDownloaded }) }
+
+    private func sorted(_ rows: [Row]) -> [Row] {
+        sort.sorted(rows, by: \.model)
+    }
 
     func displayName(of alias: String) -> String {
         rows.first { $0.model.alias == alias }?.model.displayName ?? alias

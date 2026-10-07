@@ -65,9 +65,23 @@ struct ModelManagerView: View {
                     }
                 }
                 ModelManagerSection(title: "In memory", rows: viewModel.loadedRows, actions: actions)
-                ModelManagerSection(title: "Models", rows: viewModel.otherRows, actions: actions)
+                ModelManagerSection(title: "Downloaded", rows: viewModel.downloadedRows, actions: actions)
+                ModelManagerSection(title: "Not downloaded", rows: viewModel.notDownloadedRows, actions: actions)
             }
             .navigationTitle("Models")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort by Size", selection: $viewModel.sort) {
+                            ForEach(ModelSort.allCases, id: \.self) { sort in
+                                Text(sort.title).tag(sort)
+                            }
+                        }
+                    } label: {
+                        Label("Sort", systemImage: "arrow.up.arrow.down")
+                    }
+                }
+            }
             .task { await viewModel.refresh() }
             .refreshable { await viewModel.refresh() }
             .confirmationDialog(deleteTitle, isPresented: $isConfirmingDelete, titleVisibility: .visible) {

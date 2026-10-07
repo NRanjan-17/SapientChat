@@ -88,6 +88,22 @@ struct ModelManagerViewModelTests {
         await manager.unload(try #require(row(TestModels.small, in: manager)))
         #expect(manager.loaded.isEmpty)
     }
+
+    @Test func downloadedModelsComeBeforeTheRest() async {
+        let manager = makeManager(storage: FakeStorage(downloads: [TestModels.big.repoId: 200]))
+        await manager.refresh()
+        #expect(manager.downloadedRows.map(\.model) == [TestModels.big])
+        #expect(manager.notDownloadedRows.map(\.model) == [TestModels.small])
+        #expect(manager.loadedRows.isEmpty)
+    }
+
+    @Test func sortsBySize() async {
+        let manager = makeManager()
+        await manager.refresh()
+        #expect(manager.notDownloadedRows.map(\.model) == [TestModels.small, TestModels.big])
+        manager.sort = .largestFirst
+        #expect(manager.notDownloadedRows.map(\.model) == [TestModels.big, TestModels.small])
+    }
 }
 
 struct ReleaseNoticeTests {
@@ -97,5 +113,13 @@ struct ReleaseNoticeTests {
         let memory = ModelManagerViewModel.releaseNotice(loading: "c", released: ["a", "b"], availableBytes: 1_000_000_000, slotsFull: false)
         #expect(memory.contains("released a and b to make room in memory"))
         #expect(memory.contains("iOS allowed only"))
+    }
+}
+
+struct ModelSortTests {
+    @Test func equalSizesKeepTheirOrder() {
+        let a = PhoneModel(alias: "a", repoId: "a", params: "1B", billions: 1)
+        let b = PhoneModel(alias: "b", repoId: "b", params: "1B", billions: 1)
+        #expect(ModelSort.largestFirst.sorted([a, b], by: { $0 }).map(\.alias) == ["a", "b"])
     }
 }
