@@ -15,7 +15,7 @@ struct RootView: View {
                 ModelManagerView(viewModel: viewModel.models)
             }
             Tab(AppTab.benchmark.title, systemImage: AppTab.benchmark.symbol, value: .benchmark) {
-                BenchmarkTab(benchmark: viewModel.benchmark, compare: viewModel.compare)
+                BenchmarkTab(benchmark: viewModel.benchmark, compare: viewModel.compare, makeSelector: viewModel.makeModelSelector)
             }
             Tab(AppTab.settings.title, systemImage: AppTab.settings.symbol, value: .settings) {
                 SettingsTab(server: viewModel.server)

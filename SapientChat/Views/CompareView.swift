@@ -4,12 +4,13 @@ import SwiftUI
 /// other), and see answers and numbers side by side.
 struct CompareView: View {
     @Bindable var viewModel: CompareViewModel
+    let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
 
     var body: some View {
         Form {
             Section {
-                CompareModelPicker(title: "Model A", models: viewModel.models, selection: $viewModel.modelA)
-                CompareModelPicker(title: "Model B", models: viewModel.models, selection: $viewModel.modelB)
+                ModelPickerField(title: "Model A", selection: viewModel.modelA, makeSelector: makeSelector, onSelect: viewModel.selectModelA)
+                ModelPickerField(title: "Model B", selection: viewModel.modelB, makeSelector: makeSelector, onSelect: viewModel.selectModelB)
             } footer: {
                 Text("The models run one after the other, so each gets the whole device and the numbers stay fair.")
             }
@@ -45,5 +46,5 @@ struct CompareView: View {
 }
 
 #Preview {
-    NavigationStack { CompareView(viewModel: .preview) }
+    NavigationStack { CompareView(viewModel: .preview, makeSelector: ChatListViewModel.preview.makeModelSelector) }
 }

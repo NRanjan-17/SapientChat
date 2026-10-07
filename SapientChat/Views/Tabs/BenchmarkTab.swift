@@ -4,6 +4,7 @@ import SwiftUI
 struct BenchmarkTab: View {
     let benchmark: BenchmarkViewModel
     let compare: CompareViewModel
+    let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
     @SceneStorage("benchmarkMode") private var mode = BenchmarkMode.single
 
     private var isRunning: Bool { benchmark.isRunning || compare.isRunning }
@@ -12,8 +13,8 @@ struct BenchmarkTab: View {
         NavigationStack {
             Group {
                 switch mode {
-                case .single: BenchmarkView(viewModel: benchmark)
-                case .compare: CompareView(viewModel: compare)
+                case .single: BenchmarkView(viewModel: benchmark, makeSelector: makeSelector)
+                case .compare: CompareView(viewModel: compare, makeSelector: makeSelector)
                 }
             }
             .navigationTitle("Benchmark")
@@ -36,5 +37,5 @@ struct BenchmarkTab: View {
 }
 
 #Preview {
-    BenchmarkTab(benchmark: .preview, compare: .preview)
+    BenchmarkTab(benchmark: .preview, compare: .preview, makeSelector: ChatListViewModel.preview.makeModelSelector)
 }

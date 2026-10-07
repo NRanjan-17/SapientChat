@@ -4,6 +4,7 @@ import SwiftUI
 /// progress and results.
 struct BenchmarkView: View {
     @Bindable var viewModel: BenchmarkViewModel
+    let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
 
     var body: some View {
         Form {
@@ -11,7 +12,9 @@ struct BenchmarkView: View {
                 if viewModel.availableModels.isEmpty {
                     LabeledContent("Model", value: viewModel.model)
                 } else {
-                    CompareModelPicker(title: "Model", models: viewModel.availableModels, selection: $viewModel.model)
+                    ModelPickerField(title: "Model", selection: viewModel.model, makeSelector: makeSelector) { alias in
+                        viewModel.model = alias
+                    }
                 }
             } footer: {
                 Text("A model a chat already has in memory is reused, not loaded again. Your conversations are kept.")
@@ -49,9 +52,9 @@ struct BenchmarkView: View {
 }
 
 #Preview("Settings") {
-    NavigationStack { BenchmarkView(viewModel: .preview) }
+    NavigationStack { BenchmarkView(viewModel: .preview, makeSelector: ChatListViewModel.preview.makeModelSelector) }
 }
 
 #Preview("Results") {
-    NavigationStack { BenchmarkView(viewModel: .finishedPreview) }
+    NavigationStack { BenchmarkView(viewModel: .finishedPreview, makeSelector: ChatListViewModel.preview.makeModelSelector) }
 }

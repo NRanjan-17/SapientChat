@@ -95,6 +95,11 @@ final class ChatListViewModel {
         refresh()
     }
 
+    /// The model picker for Benchmark and Compare.
+    func makeModelSelector(selected: String, onSelect: @escaping (String) -> Void) -> ModelSelectorViewModel {
+        ModelSelectorViewModel(selected: selected, services: services, device: device, onSelect: onSelect)
+    }
+
     func makeModelSelector(for chat: ChatViewModel) -> ModelSelectorViewModel {
         ModelSelectorViewModel(selected: chat.conversation.modelAlias, services: services, device: device) { [weak chat] alias in
             chat?.selectModel(alias)

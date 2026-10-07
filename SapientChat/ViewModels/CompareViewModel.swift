@@ -59,6 +59,18 @@ final class CompareViewModel: Identifiable {
         return (b - a) / a * 100
     }
 
+    /// Picks model A; picking B's model swaps the two, so they never match.
+    func selectModelA(_ alias: String) {
+        if alias == modelB { modelB = modelA }
+        modelA = alias
+    }
+
+    /// Picks model B; picking A's model swaps the two.
+    func selectModelB(_ alias: String) {
+        if alias == modelA { modelA = modelB }
+        modelB = alias
+    }
+
     func displayName(of alias: String) -> String {
         models.first { $0.alias == alias }?.displayName ?? alias
     }
