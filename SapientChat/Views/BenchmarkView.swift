@@ -4,72 +4,54 @@ import SwiftUI
 /// progress and results.
 struct BenchmarkView: View {
     @Bindable var viewModel: BenchmarkViewModel
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
+        Form {
+            Section {
+                if viewModel.availableModels.isEmpty {
                     LabeledContent("Model", value: viewModel.model)
-                } footer: {
-                    Text("Runs on the model the chat uses. Your conversation is kept.")
+                } else {
+                    CompareModelPicker(title: "Model", models: viewModel.availableModels, selection: $viewModel.model)
                 }
-
-                BenchmarkSettingsSection(settings: $viewModel.settings)
-                    .disabled(viewModel.isRunning)
-
-                BenchmarkRunSection(
-                    state: viewModel.state,
-                    canRun: viewModel.canRun,
-                    onRun: viewModel.run,
-                    onCancel: viewModel.cancel
-                )
-
-                if let result = viewModel.result {
-                    BenchmarkResultsSection(result: result)
-                }
+            } footer: {
+                Text("A model a chat already has in memory is reused, not loaded again. Your conversations are kept.")
             }
-            .navigationTitle("Benchmark")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: close)
-                }
-                if let result = viewModel.result {
-                    ToolbarItem(placement: .topBarLeading) {
-                        ReportShareMenu(
-                            title: "Share",
-                            fileName: PDFExporter.fileName("Benchmark", models: [viewModel.model.split(separator: "/").last.map(String.init) ?? viewModel.model], date: .now),
-                            json: result.jsonText()
-                        ) {
-                            BenchmarkReportView(result: result, device: .current(), date: .now)
-                        }
+            .disabled(viewModel.isRunning)
+
+            BenchmarkSettingsSection(settings: $viewModel.settings)
+                .disabled(viewModel.isRunning)
+
+            BenchmarkRunSection(
+                state: viewModel.state,
+                canRun: viewModel.canRun,
+                onRun: viewModel.run,
+                onCancel: viewModel.cancel
+            )
+
+            if let result = viewModel.result {
+                BenchmarkResultsSection(result: result)
+            }
+        }
+        .toolbar {
+            if let result = viewModel.result {
+                ToolbarItem(placement: .primaryAction) {
+                    ReportShareMenu(
+                        title: "Share",
+                        fileName: PDFExporter.fileName("Benchmark", models: [viewModel.model.split(separator: "/").last.map(String.init) ?? viewModel.model], date: .now),
+                        json: result.jsonText()
+                    ) {
+                        BenchmarkReportView(result: result, device: .current(), date: .now)
                     }
                 }
             }
-            .interactiveDismissDisabled(viewModel.isRunning)
         }
-        // iOS forbids GPU work in the background: stop between runs instead.
-        .onChange(of: scenePhase) { _, phase in
-            handleScenePhase(phase)
-        }
-    }
-
-    private func handleScenePhase(_ phase: ScenePhase) {
-        if phase != .active { viewModel.cancel() }
-    }
-
-    private func close() {
-        viewModel.cancel()
-        dismiss()
     }
 }
 
 #Preview("Settings") {
-    BenchmarkView(viewModel: .preview)
+    NavigationStack { BenchmarkView(viewModel: .preview) }
 }
 
 #Preview("Results") {
-    BenchmarkView(viewModel: .finishedPreview)
+    NavigationStack { BenchmarkView(viewModel: .finishedPreview) }
 }

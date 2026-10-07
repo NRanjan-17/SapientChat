@@ -14,7 +14,7 @@ struct ConversationRow: View {
                 .font(.headline)
                 .lineLimit(1)
             HStack {
-                Label(modelName, systemImage: "cpu")
+                Label(modelName, systemImage: "square.stack.3d.up")
                     .labelStyle(.titleAndIcon)
                 Spacer()
                 Text(conversation.updatedAt, format: .relative(presentation: .named))

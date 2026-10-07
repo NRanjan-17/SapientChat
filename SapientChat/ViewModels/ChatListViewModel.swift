@@ -1,8 +1,9 @@
 import Foundation
 import Observation
 
-/// The chat list and the app's entry point to every screen. Owns the
-/// shared device state and the ViewModel of the open chat.
+/// The app's root: the chat list, the selected tab, and the long-lived
+/// ViewModels behind each tab (shared device state, model manager,
+/// benchmark, compare, API server).
 @Observable
 final class ChatListViewModel {
     private(set) var conversations: [Conversation] = []
@@ -11,12 +12,20 @@ final class ChatListViewModel {
         didSet { if selectedID != oldValue { openSelected() } }
     }
     private(set) var activeChat: ChatViewModel?
+    /// The visible tab. Starting a chat from the Models tab switches to Chats.
+    var selectedTab: AppTab = .chats
     let device: DeviceStatus
     /// The local API server; lives as long as the app so it keeps serving
     /// with its screen closed.
     let server: ServerViewModel
     /// API requests other apps on this device hand over by URL.
     let handoff: HandoffViewModel
+    /// The model manager, kept for the app's lifetime so downloads and
+    /// loads carry on (and still show progress) after its screen closes.
+    let models: ModelManagerViewModel
+    /// The Benchmark tab's two modes; kept so results survive tab switches.
+    let benchmark: BenchmarkViewModel
+    let compare: CompareViewModel
 
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private let store: any ConversationStore
@@ -28,7 +37,20 @@ final class ChatListViewModel {
         let router = ServeRouter(services: services, device: device)
         server = ServerViewModel(router: router)
         handoff = HandoffViewModel(router: router)
+        models = ModelManagerViewModel(services: services, device: device)
+        let catalog = services.catalog.chatModels()
+        let firstModel = store.conversations().first?.modelAlias ?? PhoneModel.defaultAlias
+        benchmark = BenchmarkViewModel(
+            model: firstModel,
+            service: services.benchmark,
+            availableModels: catalog
+        ) { [device] _ in device.refreshMemory() }
+        compare = CompareViewModel(services: services, device: device, initialModel: firstModel)
         refresh()
+        models.onNewChat = { [weak self] alias in
+            self?.newChat(model: alias)
+            self?.selectedTab = .chats
+        }
     }
 
     /// The model a new chat starts with: the last one used, else the default.
@@ -72,20 +94,13 @@ final class ChatListViewModel {
         }
     }
 
-    func makeCompareViewModel() -> CompareViewModel {
-        CompareViewModel(services: services, device: device, initialModel: activeChat?.conversation.modelAlias ?? modelForNewChat)
-    }
 
-    /// `onNewChat` runs after the manager has loaded the model.
-    func makeModelManager(onNewChat: @escaping (String) -> Void) -> ModelManagerViewModel {
-        ModelManagerViewModel(services: services, device: device) { [weak self] alias in
-            self?.newChat(model: alias)
-            onNewChat(alias)
-        }
-    }
-
+    /// iOS forbids GPU work in the background: stop whatever is generating
+    /// (a chat reply, a benchmark, a comparison) when the app leaves.
     func appDidLeaveForeground() {
         activeChat?.appDidLeaveForeground()
+        benchmark.cancel()
+        compare.cancel()
     }
 
     private func openSelected() {

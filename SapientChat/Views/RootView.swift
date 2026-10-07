@@ -1,38 +1,46 @@
 import SwiftUI
 
-/// Chat list and the open chat: side by side on iPad, a stack on iPhone.
+/// The app's four sections as tabs. The selected tab is kept per scene.
 struct RootView: View {
     @Bindable var viewModel: ChatListViewModel
     @Environment(\.scenePhase) private var scenePhase
+    @SceneStorage("selectedTab") private var storedTab = AppTab.chats
 
     var body: some View {
-        NavigationSplitView {
-            ChatListView(viewModel: viewModel)
-        } detail: {
-            if let chat = viewModel.activeChat {
-                ChatView(viewModel: chat, list: viewModel)
-                    .id(chat.conversation.id)
-            } else {
-                ContentUnavailableView {
-                    Label("No chat open", systemImage: "bubble.left.and.text.bubble.right")
-                } description: {
-                    Text("Pick a chat or start a new one. Chats are saved on this device.")
-                } actions: {
-                    Button("New Chat", systemImage: "square.and.pencil", action: viewModel.newChat)
-                        .buttonStyle(.borderedProminent)
-                }
+        TabView(selection: $viewModel.selectedTab) {
+            Tab(AppTab.chats.title, systemImage: AppTab.chats.symbol, value: .chats) {
+                ChatsTab(viewModel: viewModel)
+            }
+            Tab(AppTab.models.title, systemImage: AppTab.models.symbol, value: .models) {
+                ModelManagerView(viewModel: viewModel.models)
+            }
+            Tab(AppTab.benchmark.title, systemImage: AppTab.benchmark.symbol, value: .benchmark) {
+                BenchmarkTab(benchmark: viewModel.benchmark, compare: viewModel.compare)
+            }
+            Tab(AppTab.settings.title, systemImage: AppTab.settings.symbol, value: .settings) {
+                SettingsTab(server: viewModel.server)
             }
         }
-        .safeAreaInset(edge: .top) {
+        // An overlay, not a safe-area inset: an inset on the TabView pushes
+        // every tab's navigation bar down even while the banner is empty.
+        .overlay(alignment: .top) {
             HandoffBanner(viewModel: viewModel.handoff)
         }
         .onOpenURL { url in
             if HandoffViewModel.handles(url) { viewModel.handoff.open(url) }
         }
         .task { await viewModel.device.observeThermal() }
+        .onAppear(perform: restoreTab)
+        .onChange(of: viewModel.selectedTab) { _, tab in
+            storedTab = tab
+        }
         .onChange(of: scenePhase) { _, phase in
             handleScenePhase(phase)
         }
+    }
+
+    private func restoreTab() {
+        viewModel.selectedTab = storedTab
     }
 
     private func handleScenePhase(_ phase: ScenePhase) {

@@ -114,13 +114,6 @@ final class ChatViewModel {
         backendLabel = nil
     }
 
-    /// The benchmark screen for this chat's model, on the shared engine.
-    func makeBenchmarkViewModel() -> BenchmarkViewModel {
-        BenchmarkViewModel(model: conversation.modelAlias, service: services.benchmark) { [device] _ in
-            device.refreshMemory()
-        }
-    }
-
     /// iOS forbids GPU work in the background and gives background CPU only
     /// ~30 s, so generation stops when the app leaves the foreground.
     func appDidLeaveForeground() {

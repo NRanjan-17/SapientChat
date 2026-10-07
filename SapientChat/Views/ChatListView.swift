@@ -1,15 +1,11 @@
 import SwiftUI
 
-/// Saved chats, newest first, with new/rename/delete plus Compare, Models
-/// and API Server entry points.
+/// Saved chats, newest first, with new, rename and delete.
 struct ChatListView: View {
     @Bindable var viewModel: ChatListViewModel
     @State private var renaming: Conversation?
     @State private var isRenaming = false
     @State private var newTitle = ""
-    @State private var compare: CompareViewModel?
-    @State private var models: ModelManagerViewModel?
-    @State private var isShowingServer = false
 
     var body: some View {
         List(selection: $viewModel.selectedID) {
@@ -39,35 +35,19 @@ struct ChatListView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button("New Chat", systemImage: "square.and.pencil", action: viewModel.newChat)
             }
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Models", systemImage: "memorychip", action: openModels)
-            }
-            ToolbarItem(placement: .topBarLeading) {
-                Button("Compare", systemImage: "square.split.2x1", action: openCompare)
-            }
-            ToolbarItem(placement: .topBarLeading) {
-                Button("API Server", systemImage: serverImage) { isShowingServer = true }
-                    .tint(viewModel.server.status == .running ? .green : nil)
-            }
         }
         .alert("Rename Chat", isPresented: $isRenaming) {
             TextField("Title", text: $newTitle)
             Button("Rename", action: finishRenaming)
             Button("Cancel", role: .cancel) {}
         }
-        .sheet(item: $compare) { compare in
-            CompareView(viewModel: compare)
+        .safeAreaInset(edge: .bottom) {
+            if !viewModel.models.activeRows.isEmpty {
+                ModelActivityBar(rows: viewModel.models.activeRows, onTap: showModels)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
-        .sheet(item: $models) { models in
-            ModelManagerView(viewModel: models)
-        }
-        .sheet(isPresented: $isShowingServer) {
-            ServerView(viewModel: viewModel.server)
-        }
-    }
-
-    private var serverImage: String {
-        viewModel.server.status == .running ? "dot.radiowaves.left.and.right" : "antenna.radiowaves.left.and.right"
+        .animation(.smooth, value: viewModel.models.activeRows.isEmpty)
     }
 
     private func startRenaming(_ conversation: Conversation) {
@@ -81,13 +61,9 @@ struct ChatListView: View {
         renaming = nil
     }
 
-    private func openCompare() {
-        compare = viewModel.makeCompareViewModel()
-    }
-
-    private func openModels() {
-        // A chat started from the manager closes it and opens the chat.
-        models = viewModel.makeModelManager { _ in models = nil }
+    /// Downloads and loads in progress live on the Models tab.
+    private func showModels() {
+        viewModel.selectedTab = .models
     }
 }
 

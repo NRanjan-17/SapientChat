@@ -28,20 +28,25 @@ final class ModelManagerViewModel: Identifiable {
     private(set) var loaded: [String] = []
     private(set) var totalDownloadBytes: UInt64 = 0
     var errorMessage: String?
+    /// Why a model was just released, e.g. to make room for another.
+    var notice: String?
     let device: DeviceStatus
+    /// Runs after "New Chat" has loaded the model.
+    @ObservationIgnored var onNewChat: (String) -> Void
 
     @ObservationIgnored private let services: AppServices
-    @ObservationIgnored private let onNewChat: (String) -> Void
     private var activities: [String: Activity] = [:]
     @ObservationIgnored private var tasks: [String: Task<Void, Never>] = [:]
 
-    init(services: AppServices, device: DeviceStatus, onNewChat: @escaping (String) -> Void) {
+    init(services: AppServices, device: DeviceStatus, onNewChat: @escaping (String) -> Void = { _ in }) {
         self.services = services
         self.device = device
         self.onNewChat = onNewChat
     }
 
     var loadedRows: [Row] { rows.filter(\.isLoaded) }
+    /// Models downloading or loading right now.
+    var activeRows: [Row] { rows.filter { $0.activity != nil } }
     var otherRows: [Row] { rows.filter { !$0.isLoaded } }
 
     func displayName(of alias: String) -> String {
@@ -127,12 +132,33 @@ final class ModelManagerViewModel: Identifiable {
     // MARK: Private
 
     private func prepare(_ alias: String) async throws -> String {
-        try await ModelPreparer(services: services, device: device).prepare(alias) { phase in
+        let before = await services.chat.loadedModels()
+        device.refreshMemory()
+        let available = device.memory.availableBytes
+        let backend = try await ModelPreparer(services: services, device: device).prepare(alias) { phase in
             switch phase {
             case .downloading(let progress): setActivity(.downloading(progress), for: alias)
             case .loading: setActivity(.loading, for: alias)
             }
         }
+        let after = await services.chat.loadedModels()
+        let released = before.filter { !after.contains($0) }
+        if !released.isEmpty {
+            notice = Self.releaseNotice(loading: displayName(of: alias), released: released.map(displayName(of:)),
+                                        availableBytes: available, slotsFull: before.count >= capacity)
+        }
+        return backend
+    }
+
+    /// "To load X, released Y: iOS allowed only 1.2 GB more." Says whether
+    /// it was the slot limit or memory, so neither looks like a hidden cap.
+    static func releaseNotice(loading: String, released: [String], availableBytes: UInt64?, slotsFull: Bool) -> String {
+        let names = released.formatted(.list(type: .and))
+        if slotsFull {
+            return "To load \(loading), released \(names): all model slots were in use."
+        }
+        let room = availableBytes.map { " iOS allowed only \(Format.bytes($0)) more." } ?? ""
+        return "To load \(loading), released \(names) to make room in memory.\(room)"
     }
 
     /// Runs one task per model; the row shows its activity until it ends.

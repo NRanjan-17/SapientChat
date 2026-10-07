@@ -26,6 +26,16 @@ final class ServerViewModel: Identifiable {
     /// Newest first, at most `logLimit`.
     private(set) var log: [ServeRouter.LogEntry] = []
 
+    /// One-line server state for toggles and lists.
+    var statusTitle: String {
+        switch status {
+        case .stopped: "Server off"
+        case .starting: "Starting…"
+        case .running: "Running"
+        case .failed: "Couldn't start"
+        }
+    }
+
     var port: UInt16 {
         didSet { settingChanged(Keys.port, Int(port)) }
     }

@@ -54,7 +54,10 @@ struct ModelPreparer {
             try await downloads.download(model: alias) { sink.yield($0) }
         }
         try await withTaskCancellationHandler {
-            for await progress in updates {
+            var meter = DownloadSpeedMeter()
+            for await update in updates {
+                var progress = update
+                progress.bytesPerSecond = meter.record(update.downloadedBytes)
                 onPhase(.downloading(progress))
             }
             try await task.value

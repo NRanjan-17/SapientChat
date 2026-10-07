@@ -4,7 +4,6 @@ import SwiftUI
 /// delete, and start a chat with a model that's already loaded.
 struct ModelManagerView: View {
     @Bindable var viewModel: ModelManagerViewModel
-    @Environment(\.dismiss) private var dismiss
     @State private var pendingDelete: ModelManagerViewModel.Row?
     @State private var isConfirmingDelete = false
     @State private var isConfirmingDeleteAll = false
@@ -17,25 +16,58 @@ struct ModelManagerView: View {
                     capacity: viewModel.capacity,
                     memory: viewModel.device.memory
                 )
-                ModelManagerSection(title: "In memory", rows: viewModel.loadedRows, actions: actions)
-                ModelManagerSection(title: "Models", rows: viewModel.otherRows, actions: actions)
                 Section {
-                    LabeledContent("Downloaded", value: Format.bytes(viewModel.totalDownloadBytes))
-                    Button("Delete All Downloads", systemImage: "trash", role: .destructive) {
+                    LabeledContent {
+                        Text(viewModel.totalDownloadBytes == 0 ? "None" : Format.bytes(viewModel.totalDownloadBytes))
+                            .font(.headline)
+                            .foregroundStyle(.blue)
+                    } label: {
+                        Label {
+                            Text("Downloaded models")
+                        } icon: {
+                            Image(systemName: "internaldrive.fill")
+                                .foregroundStyle(.white)
+                                .frame(width: 28, height: 28)
+                                .background(.blue.gradient, in: .rect(cornerRadius: 7))
+                        }
+                    }
+                    Button(role: .destructive) {
                         isConfirmingDeleteAll = true
+                    } label: {
+                        Label {
+                            Text("Delete All Downloads")
+                        } icon: {
+                            Image(systemName: "trash.fill")
+                                .foregroundStyle(.white)
+                                .frame(width: 28, height: 28)
+                                .background(.red.gradient, in: .rect(cornerRadius: 7))
+                        }
                     }
                     .disabled(viewModel.totalDownloadBytes == 0)
+                } header: {
+                    Text("Storage")
                 } footer: {
                     Text("Downloaded models load without a network connection.")
                 }
+                if let notice = viewModel.notice {
+                    Section {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundStyle(.orange)
+                            Text(notice)
+                                .font(.subheadline)
+                            Spacer(minLength: 0)
+                            Button("Dismiss", systemImage: "xmark") { viewModel.notice = nil }
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.borderless)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                ModelManagerSection(title: "In memory", rows: viewModel.loadedRows, actions: actions)
+                ModelManagerSection(title: "Models", rows: viewModel.otherRows, actions: actions)
             }
             .navigationTitle("Models")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", action: close)
-                }
-            }
             .task { await viewModel.refresh() }
             .refreshable { await viewModel.refresh() }
             .confirmationDialog(deleteTitle, isPresented: $isConfirmingDelete, titleVisibility: .visible) {
@@ -84,10 +116,6 @@ struct ModelManagerView: View {
 
     private func deleteAll() {
         Task { await viewModel.deleteAllDownloads() }
-    }
-
-    private func close() {
-        dismiss()
     }
 }
 

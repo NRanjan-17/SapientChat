@@ -89,3 +89,13 @@ struct ModelManagerViewModelTests {
         #expect(manager.loaded.isEmpty)
     }
 }
+
+struct ReleaseNoticeTests {
+    @Test func saysWhetherSlotsOrMemoryCausedTheRelease() {
+        let slots = ModelManagerViewModel.releaseNotice(loading: "c", released: ["a"], availableBytes: 1_000_000_000, slotsFull: true)
+        #expect(slots.contains("all model slots were in use"))
+        let memory = ModelManagerViewModel.releaseNotice(loading: "c", released: ["a", "b"], availableBytes: 1_000_000_000, slotsFull: false)
+        #expect(memory.contains("released a and b to make room in memory"))
+        #expect(memory.contains("iOS allowed only"))
+    }
+}

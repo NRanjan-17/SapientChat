@@ -4,7 +4,6 @@ import SwiftUI
 struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     let list: ChatListViewModel
-    @State private var benchmark: BenchmarkViewModel?
     @State private var modelSelector: ModelSelectorViewModel?
 
     var body: some View {
@@ -39,17 +38,10 @@ struct ChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(viewModel.modelName, systemImage: "cpu", action: openModelSelector)
+                Button(viewModel.modelName, systemImage: "square.stack.3d.up", action: openModelSelector)
                     .labelStyle(.titleAndIcon)
                     .disabled(viewModel.isBusy)
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Benchmark", systemImage: "gauge.with.dots.needle.67percent", action: openBenchmark)
-                    .disabled(viewModel.isBusy)
-            }
-        }
-        .sheet(item: $benchmark) { benchmark in
-            BenchmarkView(viewModel: benchmark)
         }
         .sheet(item: $modelSelector) { selector in
             ModelSelectorView(viewModel: selector)
@@ -59,10 +51,6 @@ struct ChatView: View {
     private func sendSuggestion(_ text: String) {
         viewModel.draft = text
         viewModel.send()
-    }
-
-    private func openBenchmark() {
-        benchmark = viewModel.makeBenchmarkViewModel()
     }
 
     private func openModelSelector() {

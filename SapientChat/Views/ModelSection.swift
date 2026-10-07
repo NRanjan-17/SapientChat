@@ -14,6 +14,11 @@ struct ModelSection: View {
             Section {
                 ForEach(rows) { row in
                     ModelRow(row: row, canSelect: canSelect, onSelect: onSelect)
+                        .contextMenu {
+                            if row.download.isDownloaded {
+                                Button("Delete Download", systemImage: "trash", role: .destructive) { onDelete(row) }
+                            }
+                        }
                         .swipeActions {
                             if row.download.isDownloaded {
                                 Button("Delete Download", systemImage: "trash", role: .destructive) { onDelete(row) }

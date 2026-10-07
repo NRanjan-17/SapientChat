@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// One model in the manager: what it is, its state (not downloaded,
-/// downloading with progress, downloaded, loading, in memory) and the
-/// actions that make sense for that state.
+/// One model in the manager, App Store style: a colored tile, name, spec
+/// chips and a status line, with one primary action on the right and the
+/// rest (including Delete) in a ⋯ menu.
 struct ModelManagerRow: View {
     struct Actions {
         let download: (ModelManagerViewModel.Row) -> Void
@@ -17,36 +17,72 @@ struct ModelManagerRow: View {
     let actions: Actions
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(row.model.displayName)
-                    .font(.headline)
-                Spacer()
-                ModelStatusBadge(row: row)
+        HStack(alignment: .top, spacing: 12) {
+            ModelTile(model: row.model, isLoaded: row.isLoaded)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 8) {
+                    Text(row.model.displayName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    ModelManagerButtons(row: row, actions: actions)
+                }
+                ModelSpecChips(model: row.model)
+                status
             }
-            Text("\(row.model.params.split(separator: " ").first.map(String.init) ?? row.model.params) · \(row.model.format) · ≈\(Format.bytes(row.model.estimatedMemoryBytes)) memory")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            switch row.activity {
-            case .downloading(let progress):
-                DownloadProgressView(progress: progress)
-            case .loading:
-                Label("Loading into memory…", systemImage: "memorychip")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            case nil:
-                EmptyView()
-            }
-
-            ModelManagerButtons(row: row, actions: actions)
+            // Separators start under the text, the same for every row.
+            .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
+        .contextMenu { ModelManagerMenuItems(row: row, actions: actions) }
         .swipeActions {
-            if row.download.bytes > 0 && row.activity == nil {
-                Button("Delete Download", systemImage: "trash", role: .destructive) { actions.delete(row) }
+            if row.canDelete {
+                Button("Delete", systemImage: "trash", role: .destructive) { actions.delete(row) }
             }
         }
         .animation(.smooth, value: row.activity)
+        .animation(.smooth, value: row.isLoaded)
+    }
+
+    @ViewBuilder private var status: some View {
+        switch row.activity {
+        case .downloading(let progress):
+            DownloadProgressView(progress: progress, tint: row.model.tint)
+        case .loading:
+            IconText("Loading into memory…", systemImage: "memorychip")
+                .font(.caption)
+                .foregroundStyle(.yellow)
+        case nil:
+            Group {
+                if row.isLoaded {
+                    IconText("In memory · \(Format.bytes(row.download.bytes)) on device", systemImage: "memorychip.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    switch row.download {
+                    case .downloaded(let bytes):
+                        IconText("Downloaded · \(Format.bytes(bytes))", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.blue)
+                    case .partial(let bytes):
+                        IconText("Paused at \(Format.bytes(bytes))", systemImage: "arrow.down.circle.dotted")
+                            .foregroundStyle(.orange)
+                    case .notDownloaded:
+                        if row.fits {
+                            IconText("Not downloaded", systemImage: "arrow.down.circle")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            IconText("Needs more memory than iOS allows now", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                        }
+                    }
+                }
+            }
+            .font(.caption)
+        }
+    }
+}
+
+extension ModelManagerViewModel.Row {
+    var canDelete: Bool {
+        download.bytes > 0 && activity == nil
     }
 }

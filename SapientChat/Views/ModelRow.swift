@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// One model: name, size and format, estimated memory, download state.
+/// One model in a chat's model picker: colored tile, name, spec chips and
+/// download state, with a checkmark on the chat's current model.
 struct ModelRow: View {
     let row: ModelSelectorViewModel.Row
     let canSelect: Bool
@@ -9,32 +10,25 @@ struct ModelRow: View {
     var body: some View {
         Button(action: select) {
             HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(row.model.displayName)
-                            .font(.headline)
-                        if row.isLoaded {
-                            Text("Loaded")
-                                .font(.caption.bold())
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(.tint.opacity(0.15), in: .capsule)
-                        }
-                    }
-                    Text("\(row.model.params.split(separator: " ").first.map(String.init) ?? row.model.params) · \(row.model.format) · ≈\(Format.bytes(row.model.estimatedMemoryBytes)) memory")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Label(downloadText, systemImage: row.download.isDownloaded ? "checkmark.icloud" : "icloud.and.arrow.down")
-                        .font(.subheadline)
-                        .foregroundStyle(row.download.isDownloaded ? .green : .secondary)
+                ModelTile(model: row.model, isLoaded: row.isLoaded, size: 40)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(row.model.displayName)
+                        .font(.headline)
+                        .lineLimit(1)
+                    ModelSpecChips(model: row.model)
+                    status
+                        .font(.caption)
                 }
-                Spacer()
+                .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
+                Spacer(minLength: 8)
                 if row.isSelected {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(.tint)
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(row.model.tint)
                         .accessibilityLabel("Selected")
                 }
             }
+            .padding(.vertical, 4)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
@@ -42,11 +36,22 @@ struct ModelRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var downloadText: String {
-        switch row.download {
-        case .downloaded(let bytes): "Downloaded · \(Format.bytes(bytes))"
-        case .partial(let bytes): "Partly downloaded · \(Format.bytes(bytes)), resumes when used"
-        case .notDownloaded: "Downloads when first used"
+    @ViewBuilder private var status: some View {
+        if row.isLoaded {
+            IconText("In memory", systemImage: "memorychip.fill")
+                .foregroundStyle(.green)
+        } else {
+            switch row.download {
+            case .downloaded(let bytes):
+                IconText("Downloaded · \(Format.bytes(bytes))", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.blue)
+            case .partial(let bytes):
+                IconText("Paused at \(Format.bytes(bytes)) · resumes when used", systemImage: "arrow.down.circle.dotted")
+                    .foregroundStyle(.orange)
+            case .notDownloaded:
+                IconText("Downloads when first used", systemImage: "arrow.down.circle")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 

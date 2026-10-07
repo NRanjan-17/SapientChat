@@ -71,6 +71,30 @@ struct ChatListViewModelTests {
         #expect(list.activeChat?.conversation.id != first.conversation.id)
     }
 
+    @Test func startingAChatFromTheModelsTabSwitchesToChats() {
+        let list = makeList()
+        list.selectedTab = .models
+
+        // What the Models tab's "New Chat" calls once the model is loaded.
+        list.models.onNewChat(TestModels.big.alias)
+
+        #expect(list.selectedTab == .chats)
+        #expect(list.activeChat?.conversation.modelAlias == TestModels.big.alias)
+    }
+
+    @Test func theBenchmarkTabCanPickAnyCatalogModel() {
+        let list = makeList()
+        #expect(list.benchmark.availableModels.map(\.alias) == FixedCatalog().chatModels().map(\.alias))
+        list.benchmark.model = TestModels.big.alias
+        #expect(list.benchmark.model == TestModels.big.alias)
+        #expect(list.compare.modelA != list.compare.modelB, "compare starts with two different models")
+    }
+
+    @Test func everyTabHasATitleAndSymbol() {
+        #expect(AppTab.allCases.map(\.title) == ["Chats", "Models", "Benchmark", "Settings"])
+        #expect(AppTab.allCases.allSatisfy { !$0.symbol.isEmpty })
+    }
+
     @Test func deletingTheOpenChatClosesIt() {
         let list = makeList()
         list.newChat()

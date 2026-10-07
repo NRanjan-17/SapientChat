@@ -12,8 +12,11 @@ final class BenchmarkViewModel: Identifiable {
     }
 
     let id = UUID()
-    /// The chat's selected model; the benchmark runs on the same engine.
-    let model: String
+    /// The model to measure; it runs on the shared engine (a model a chat
+    /// already has loaded is reused, not loaded twice).
+    var model: String
+    /// Models to choose from; empty means the model is fixed.
+    let availableModels: [PhoneModel]
     var settings = BenchmarkSettings()
     private(set) var state: State = .idle
 
@@ -25,10 +28,12 @@ final class BenchmarkViewModel: Identifiable {
     init(
         model: String,
         service: any BenchmarkService,
+        availableModels: [PhoneModel] = [],
         state: State = .idle,
         onFinish: @escaping (Bool) -> Void = { _ in }
     ) {
         self.model = model
+        self.availableModels = availableModels
         self.state = state
         self.service = service
         self.onFinish = onFinish

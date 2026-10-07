@@ -7,6 +7,15 @@ nonisolated enum Format {
         Int64(clamping: bytes).formatted(.byteCount(style: .memory))
     }
 
+    /// "740 MB" / "1.2 GB": whole megabytes, one decimal for gigabytes, so
+    /// it fits in a chip.
+    static func compactBytes(_ bytes: UInt64) -> String {
+        let value = Double(bytes)
+        return value >= 1e9
+            ? "\((value / 1e9).formatted(.number.precision(.fractionLength(1)))) GB"
+            : "\(Int((value / 1e6).rounded())) MB"
+    }
+
     /// "27.4"-style rate.
     static func rate(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(1)))
