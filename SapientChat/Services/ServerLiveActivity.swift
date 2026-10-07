@@ -21,11 +21,21 @@ final class ServerLiveActivity: LiveActivityService {
     private var currentModel: String?
     private var lastSent = Date.distantPast
     private var pending: Task<Void, Never>?
+    /// Re-sends the state now and then, so the activity's stale date keeps
+    /// moving while the server is idle (a dead app's activity goes stale).
+    private let heartbeatInterval: Duration
+    private var heartbeat: Task<Void, Never>?
 
-    init(service: any LiveActivityService, minimumInterval: TimeInterval = 1, clock: @escaping () -> Date = { .now }) {
+    init(
+        service: any LiveActivityService,
+        minimumInterval: TimeInterval = 1,
+        heartbeatInterval: Duration = .seconds(30),
+        clock: @escaping () -> Date = { .now }
+    ) {
         self.service = service
         self.clock = clock
         self.minimumInterval = minimumInterval
+        self.heartbeatInterval = heartbeatInterval
         state = State(phase: .serving, detail: "Waiting for requests", startedAt: clock())
     }
 
@@ -37,12 +47,23 @@ final class ServerLiveActivity: LiveActivityService {
         state = State(phase: .serving, detail: "Waiting for requests", startedAt: clock())
         id = service.start(SapientActivityAttributes(title: "API server", model: endpoint), state: state)
         lastSent = clock()
+        guard id != nil else { return }
+        let interval = heartbeatInterval
+        heartbeat = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else { return }
+                self?.send(force: true)
+            }
+        }
     }
 
     /// Ends it, e.g. when the server or background mode is turned off.
     func finish() {
         pending?.cancel()
         pending = nil
+        heartbeat?.cancel()
+        heartbeat = nil
         guard let id else { return }
         self.id = nil
         var final = state

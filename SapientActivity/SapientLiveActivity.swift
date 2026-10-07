@@ -7,7 +7,7 @@ import WidgetKit
 struct SapientLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: SapientActivityAttributes.self) { context in
-            LockScreenView(attributes: context.attributes, state: context.state)
+            LockScreenView(attributes: context.attributes, state: context.state, isStale: context.isStale)
                 .padding()
                 // Clear, so the Lock Screen's Liquid Glass shows through.
                 .activityBackgroundTint(.clear)
@@ -36,7 +36,7 @@ struct SapientLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 8) {
-                        PhaseLine(state: state)
+                        PhaseLine(state: state, isStale: context.isStale)
                         StatsRow(state: state)
                     }
                 }
@@ -67,6 +67,7 @@ private struct SapientMark: View {
 private struct LockScreenView: View {
     let attributes: SapientActivityAttributes
     let state: SapientActivityAttributes.ContentState
+    let isStale: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -87,7 +88,7 @@ private struct LockScreenView: View {
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
             }
-            PhaseLine(state: state)
+            PhaseLine(state: state, isStale: isStale)
             StatsRow(state: state)
         }
     }
@@ -96,15 +97,21 @@ private struct LockScreenView: View {
 /// "Generating", "Downloading · 412 MB of 1.1 GB", with a bar when there's progress.
 private struct PhaseLine: View {
     let state: SapientActivityAttributes.ContentState
+    /// No update for a while: the app was probably closed by iOS.
+    var isStale = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .foregroundStyle(state.phase == .failed ? Color.red : Color.accentColor)
-                Text(state.phase.label)
+                Image(systemName: isStale ? "pause.circle" : symbol)
+                    .foregroundStyle(state.phase == .failed ? Color.red : isStale ? Color.secondary : Color.accentColor)
+                Text(isStale ? "Not updating" : state.phase.label)
                     .font(.subheadline.weight(.medium))
-                if let detail = state.detail {
+                if isStale {
+                    Text("Open Sapient to check")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else if let detail = state.detail {
                     Text(detail)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
