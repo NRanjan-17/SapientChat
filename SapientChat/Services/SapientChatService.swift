@@ -13,25 +13,48 @@ actor SapientChatService: ChatService {
     /// the Swift consumer by a token after a stop, so later work waits for it.
     private var generation: Task<Void, Never>?
     private let contextWindows: ContextWindowStore
+    /// The backend each loaded model was loaded on.
+    private var backends: [String: String] = [:]
+    /// For each model's format: Automatic picks CPU + GPU only for memory-mapped ones.
+    private let catalog: any ModelCatalogService
 
     init(
         cacheDirectory: URL = .cachesDirectory.appending(path: "sapient"),
-        contextWindows: ContextWindowStore = .standard
+        contextWindows: ContextWindowStore = .standard,
+        catalog: any ModelCatalogService = SapientModelCatalog()
     ) {
         self.contextWindows = contextWindows
+        self.catalog = catalog
         // Keep model downloads inside the app sandbox so the OS can reclaim
         // them and uninstalling the app removes them.
         setCacheDir(path: cacheDirectory.path(percentEncoded: false))
     }
 
     func load(model: String) async throws -> String {
+        try await load(model: model, compute: nil)
+    }
+
+    /// Loads `model` on the Compute setting's backend, or on `compute` (a
+    /// benchmark's pick), reloading it if it's in memory on another one. A
+    /// model already loaded stays as it is for normal use, even if Automatic
+    /// would now choose differently (e.g. the phone warmed up).
+    func load(model: String, compute: ComputePreference?) async throws -> String {
+        let backend = EngineBackendPreference.backend(
+            for: catalog.chatModels().first { $0.alias == model }, override: compute
+        )
         if let session = slots.use(model) {
-            return session.backendLabel()
+            if compute == nil || backends[model] == backend {
+                return session.backendLabel()
+            }
+            await generation?.value
+            slots.remove(model)
+            backends[model] = nil
         }
         await generation?.value
         // Free a slot BEFORE loading, so the slots are never exceeded, even briefly.
         if slots.models.count >= slots.capacity, let leastRecent = slots.models.last {
             slots.remove(leastRecent)
+            backends[leastRecent] = nil
         }
         // Greedy decoding (no sampling fields set): deterministic, the right
         // default for small models. The context window is the user's pick for
@@ -39,11 +62,12 @@ actor SapientChatService: ChatService {
         // a phone, 8192 otherwise).
         var options = GenerationOptions(maxTokens: 512)
         options.contextLength = contextWindows.tokens(for: model).map(UInt32.init)
-        // While the server runs in the background, models load on the CPU:
-        // iOS doesn't allow GPU work from a background app.
-        if EngineBackendPreference.cpuOnly() { options.backend = "cpu" }
+        // Compute setting: CPU + GPU by default, the GPU alone when hot or in
+        // Low Power Mode, the CPU while serving in the background.
+        options.backend = backend
         let loaded = try await loadSession(model: model, options: options)
-        slots.insert(model, session: loaded)
+        for released in slots.insert(model, session: loaded) { backends[released] = nil }
+        backends[model] = backend
         return loaded.backendLabel()
     }
 
@@ -63,11 +87,13 @@ actor SapientChatService: ChatService {
     func unload(model: String) async {
         await generation?.value
         slots.remove(model)
+        backends[model] = nil
     }
 
     func unloadAll() async {
         await generation?.value
         slots.removeAll()
+        backends.removeAll()
     }
 
     /// The session for `model`, if loaded (marks it most recently used).

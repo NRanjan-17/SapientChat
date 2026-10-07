@@ -49,6 +49,20 @@ nonisolated struct PhoneModel: Identifiable, Hashable, Sendable {
         return UInt64(billions * 1e9 * bytesPerParam + overhead)
     }
 
+    /// A 4-bit or 8-bit GGUF, which iOS memory-maps: the CPU can read its
+    /// weights from the file, so CPU + GPU doesn't need a second copy in
+    /// memory. Full-precision (safetensors) models load into memory.
+    var isMemoryMapped: Bool {
+        params.contains("Q4") || params.contains("Q8")
+    }
+
+    /// This model as the memory check should see it on `backend`: CPU + GPU
+    /// keeps a second copy of a model that isn't memory-mapped.
+    func forPlanning(backend: String?) -> PhoneModel {
+        guard backend == "hybrid", !isMemoryMapped else { return self }
+        return PhoneModel(alias: alias, repoId: repoId, params: params, billions: billions * 2)
+    }
+
     /// Why this model won't fit, or nil if it should. `availableBytes` is
     /// what the app may still allocate (nil = no known limit, e.g. the
     /// simulator); `reclaimableBytes` is memory that loading frees first

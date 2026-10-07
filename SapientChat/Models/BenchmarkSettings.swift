@@ -4,6 +4,8 @@ nonisolated struct BenchmarkSettings: Equatable, Sendable {
     var maxTokens = 128
     var runs = 3
     var warmup = 1
+    /// Measure on this instead of the Compute setting; nil uses the setting.
+    var compute: ComputePreference?
 
     var totalRuns: Int { runs + warmup }
 }

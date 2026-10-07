@@ -19,8 +19,10 @@ struct ModelPreparer {
 
         if let model {
             device.refreshMemory()
+            // CPU + GPU holds a full-precision model twice: plan for that, so
+            // it's refused with a reason instead of iOS ending the app.
             let plan = MemoryPlanner.plan(
-                loading: model,
+                loading: model.forPlanning(backend: EngineBackendPreference.backend(for: model)),
                 loaded: loaded.map { name in (name, catalog.first { $0.alias == name }) },
                 availableBytes: device.memory.availableBytes
             )

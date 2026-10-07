@@ -105,13 +105,3 @@ nonisolated final class NoBackgroundKeeper: BackgroundKeeping {
     func start() async throws {}
     func stop() async {}
 }
-
-/// Whether models load on the CPU. On while the server runs in the
-/// background: iOS doesn't allow GPU work from a background app.
-nonisolated enum EngineBackendPreference {
-    static let cpuOnlyKey = "engine.cpuOnly"
-
-    static func cpuOnly(_ defaults: UserDefaults = .standard) -> Bool {
-        defaults.bool(forKey: cpuOnlyKey)
-    }
-}
