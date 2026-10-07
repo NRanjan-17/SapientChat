@@ -30,11 +30,15 @@ final class ChatListViewModel {
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private let store: any ConversationStore
 
-    init(services: AppServices, store: any ConversationStore) {
+    init(
+        services: AppServices, store: any ConversationStore,
+        liveActivities: any LiveActivityService = NoLiveActivities()
+    ) {
         self.services = services
         self.store = store
         device = DeviceStatus(memoryService: services.memory, thermalService: services.thermal)
         let router = ServeRouter(services: services, device: device)
+        router.liveActivities = liveActivities
         server = ServerViewModel(router: router)
         handoff = HandoffViewModel(router: router)
         models = ModelManagerViewModel(services: services, device: device)
@@ -43,9 +47,10 @@ final class ChatListViewModel {
         benchmark = BenchmarkViewModel(
             model: firstModel,
             service: services.benchmark,
-            availableModels: catalog
+            availableModels: catalog,
+            liveActivities: liveActivities
         ) { [device] _ in device.refreshMemory() }
-        compare = CompareViewModel(services: services, device: device, initialModel: firstModel)
+        compare = CompareViewModel(services: services, device: device, initialModel: firstModel, liveActivities: liveActivities)
         refresh()
         models.onNewChat = { [weak self] alias in
             self?.newChat(model: alias)

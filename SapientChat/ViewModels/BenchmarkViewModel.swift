@@ -24,14 +24,18 @@ final class BenchmarkViewModel: Identifiable {
     /// Told whether the benchmark finished (true) or failed (false).
     @ObservationIgnored private let onFinish: (Bool) -> Void
     @ObservationIgnored private var task: Task<Void, Never>?
+    @ObservationIgnored private let liveActivities: any LiveActivityService
+    @ObservationIgnored private var activity: LiveActivityTracker?
 
     init(
         model: String,
         service: any BenchmarkService,
         availableModels: [PhoneModel] = [],
         state: State = .idle,
+        liveActivities: any LiveActivityService = NoLiveActivities(),
         onFinish: @escaping (Bool) -> Void = { _ in }
     ) {
+        self.liveActivities = liveActivities
         self.model = model
         self.availableModels = availableModels
         self.state = state
@@ -56,6 +60,10 @@ final class BenchmarkViewModel: Identifiable {
         guard canRun else { return }
         let settings = settings
         state = .running(BenchmarkProgress(completed: 0, total: settings.totalRuns, lastRun: nil))
+        let activity = LiveActivityTracker(service: liveActivities, title: "Benchmark")
+        activity.start(model: availableModels.first { $0.alias == model }?.displayName ?? model)
+        activity.benchmark(completed: 0, total: settings.totalRuns, lastRun: nil)
+        self.activity = activity
         task = Task { [weak self, service, model] in
             do {
                 let result = try await service.benchmark(model: model, settings: settings) { progress in
@@ -78,10 +86,24 @@ final class BenchmarkViewModel: Identifiable {
         // never overwrite a finished state.
         guard case .running(let current) = state, progress.completed > current.completed else { return }
         state = .running(progress)
+        activity?.benchmark(completed: progress.completed, total: progress.total, lastRun: progress.lastRun)
     }
 
     private func finish(_ final: State) {
         state = final
+        switch final {
+        case .finished(let result):
+            activity?.finish(
+                detail: "\(result.runs.count) runs",
+                tokensPerSecond: result.meanDecodeTokensPerSecond,
+                timeToFirstTokenMs: Int(result.meanTtftMs)
+            )
+        case .failed(let message):
+            activity?.fail(message)
+        case .idle, .running:
+            break
+        }
+        activity = nil
         if case .finished = final { onFinish(true) } else { onFinish(false) }
     }
 }

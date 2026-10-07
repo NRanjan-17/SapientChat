@@ -24,7 +24,8 @@ struct SapientChatApp: App {
         self.container = container
         _viewModel = State(initialValue: ChatListViewModel(
             services: .live(),
-            store: SwiftDataConversationStore(context: container.mainContext)
+            store: SwiftDataConversationStore(context: container.mainContext),
+            liveActivities: ActivityKitLiveActivities()
         ))
     }
 

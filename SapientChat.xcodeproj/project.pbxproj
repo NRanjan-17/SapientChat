@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		E23B08E0307006CB00D68255 /* Sapient in Frameworks */ = {isa = PBXBuildFile; productRef = E23B08E2307006CB00D68255 /* Sapient */; };
+		E2A1000230700F0000D68255 /* SapientActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E2A1000130700F0000D68255 /* SapientActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,12 +26,32 @@
 			remoteGlobalIDString = E23B08B7307006CA00D68255;
 			remoteInfo = SapientChat;
 		};
+		E2A1000A30700F0000D68255 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E23B08B0307006CA00D68255 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E2A1000630700F0000D68255;
+			remoteInfo = SapientActivity;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E2A1000330700F0000D68255 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			dstPath = "";
+			dstSubfolder = PlugIns;
+			files = (
+				E2A1000230700F0000D68255 /* SapientActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		E23B08B8307006CA00D68255 /* SapientChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SapientChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E23B08C5307006CB00D68255 /* SapientChatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SapientChatTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E23B08CF307006CB00D68255 /* SapientChatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SapientChatUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E2A1000130700F0000D68255 /* SapientActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SapientActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -47,6 +68,16 @@
 		E23B08D2307006CB00D68255 /* SapientChatUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SapientChatUITests;
+			sourceTree = "<group>";
+		};
+		E2A1000430700F0000D68255 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		E2A1000530700F0000D68255 /* SapientActivity */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SapientActivity;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -68,6 +99,11 @@
 			files = (
 			);
 		};
+		E2A1000830700F0000D68255 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -77,6 +113,8 @@
 				E23B08BA307006CA00D68255 /* SapientChat */,
 				E23B08C8307006CB00D68255 /* SapientChatTests */,
 				E23B08D2307006CB00D68255 /* SapientChatUITests */,
+				E2A1000430700F0000D68255 /* Shared */,
+				E2A1000530700F0000D68255 /* SapientActivity */,
 				E23B08B9307006CA00D68255 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -87,6 +125,7 @@
 				E23B08B8307006CA00D68255 /* SapientChat.app */,
 				E23B08C5307006CB00D68255 /* SapientChatTests.xctest */,
 				E23B08CF307006CB00D68255 /* SapientChatUITests.xctest */,
+				E2A1000130700F0000D68255 /* SapientActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -101,11 +140,16 @@
 				E23B08B4307006CA00D68255 /* Sources */,
 				E23B08B5307006CA00D68255 /* Frameworks */,
 				E23B08B6307006CA00D68255 /* Resources */,
+				E2A1000330700F0000D68255 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
+			dependencies = (
+				E2A1000B30700F0000D68255 /* PBXTargetDependency */,
+			);
 			fileSystemSynchronizedGroups = (
 				E23B08BA307006CA00D68255 /* SapientChat */,
+				E2A1000430700F0000D68255 /* Shared */,
 			);
 			name = SapientChat;
 			packageProductDependencies = (
@@ -157,6 +201,25 @@
 			productReference = E23B08CF307006CB00D68255 /* SapientChatUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		E2A1000630700F0000D68255 /* SapientActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E2A1000C30700F0000D68255 /* Build configuration list for PBXNativeTarget "SapientActivity" */;
+			buildPhases = (
+				E2A1000730700F0000D68255 /* Sources */,
+				E2A1000830700F0000D68255 /* Frameworks */,
+				E2A1000930700F0000D68255 /* Resources */,
+			);
+			buildRules = (
+			);
+			fileSystemSynchronizedGroups = (
+				E2A1000430700F0000D68255 /* Shared */,
+				E2A1000530700F0000D68255 /* SapientActivity */,
+			);
+			name = SapientActivity;
+			productName = SapientActivity;
+			productReference = E2A1000130700F0000D68255 /* SapientActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -177,6 +240,9 @@
 					E23B08CE307006CB00D68255 = {
 						CreatedOnToolsVersion = 27.0;
 						TestTargetID = E23B08B7307006CA00D68255;
+					};
+					E2A1000630700F0000D68255 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -200,6 +266,7 @@
 				E23B08B7307006CA00D68255 /* SapientChat */,
 				E23B08C4307006CB00D68255 /* SapientChatTests */,
 				E23B08CE307006CB00D68255 /* SapientChatUITests */,
+				E2A1000630700F0000D68255 /* SapientActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -216,6 +283,11 @@
 			);
 		};
 		E23B08CD307006CB00D68255 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			files = (
+			);
+		};
+		E2A1000930700F0000D68255 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			files = (
 			);
@@ -238,6 +310,11 @@
 			files = (
 			);
 		};
+		E2A1000730700F0000D68255 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+			);
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -250,6 +327,11 @@
 			isa = PBXTargetDependency;
 			target = E23B08B7307006CA00D68255 /* SapientChat */;
 			targetProxy = E23B08D0307006CB00D68255 /* PBXContainerItemProxy */;
+		};
+		E2A1000B30700F0000D68255 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E2A1000630700F0000D68255 /* SapientActivity */;
+			targetProxy = E2A1000A30700F0000D68255 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -387,8 +469,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SapientChat-Info.plist";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "SapientChat serves its on-device models to other devices on your network when you turn on the API server.";
 				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "SapientChat serves its on-device models to other devices on your network when you turn on the API server.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -423,8 +506,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SapientChat-Info.plist";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "SapientChat serves its on-device models to other devices on your network when you turn on the API server.";
 				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "SapientChat serves its on-device models to other devices on your network when you turn on the API server.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -531,6 +615,64 @@
 			};
 			name = Release;
 		};
+		E2A1000D30700F0000D68255 /* Debug configuration for PBXNativeTarget "SapientActivity" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 667V7CCT79;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SapientActivity-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat.SapientActivity";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E2A1000E30700F0000D68255 /* Release configuration for PBXNativeTarget "SapientActivity" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 667V7CCT79;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SapientActivity-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat.SapientActivity";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -563,6 +705,14 @@
 			buildConfigurations = (
 				E23B08DE307006CB00D68255 /* Debug configuration for PBXNativeTarget "SapientChatUITests" */,
 				E23B08DF307006CB00D68255 /* Release configuration for PBXNativeTarget "SapientChatUITests" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		E2A1000C30700F0000D68255 /* Build configuration list for PBXNativeTarget "SapientActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E2A1000D30700F0000D68255 /* Debug configuration for PBXNativeTarget "SapientActivity" */,
+				E2A1000E30700F0000D68255 /* Release configuration for PBXNativeTarget "SapientActivity" */,
 			);
 			defaultConfigurationName = Release;
 		};

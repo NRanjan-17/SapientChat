@@ -26,9 +26,15 @@ final class CompareViewModel: Identifiable {
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private let device: DeviceStatus
     @ObservationIgnored private var task: Task<Void, Never>?
+    @ObservationIgnored private let liveActivities: any LiveActivityService
+    @ObservationIgnored private var activity: LiveActivityTracker?
 
-    init(services: AppServices, device: DeviceStatus, initialModel: String) {
+    init(
+        services: AppServices, device: DeviceStatus, initialModel: String,
+        liveActivities: any LiveActivityService = NoLiveActivities()
+    ) {
         self.services = services
+        self.liveActivities = liveActivities
         self.device = device
         models = services.catalog.chatModels()
         modelA = initialModel
@@ -72,12 +78,16 @@ final class CompareViewModel: Identifiable {
                 }
                 phase = .finished
             } catch is CancellationError {
+                activity?.finish(detail: "Stopped")
                 phase = .idle
             } catch ChatViewModelError.wontFit(let message) {
+                activity?.fail(message)
                 phase = .failed(message)
             } catch {
+                activity?.fail(String(describing: error))
                 phase = .failed(String(describing: error))
             }
+            activity = nil
             device.refreshMemory()
         }
     }
@@ -88,7 +98,11 @@ final class CompareViewModel: Identifiable {
 
     private func compare(_ alias: String, at index: Int, prompt: String, settings: BenchmarkSettings) async throws {
         let name = displayName(of: alias)
+        let activity = LiveActivityTracker(service: liveActivities, title: "Compare · model \(index + 1) of 2")
+        activity.start(model: name)
+        self.activity = activity
         _ = try await ModelPreparer(services: services, device: device).prepare(alias) { step in
+            activity.phase(step)
             phase = switch step {
             case .downloading(let progress): .running("Downloading \(name) · \(progress.text)")
             case .loading: .running("Loading \(name)…")
@@ -97,19 +111,28 @@ final class CompareViewModel: Identifiable {
         try Task.checkCancellation()
 
         phase = .running("\(name) is answering…")
+        activity.generating()
         for try await token in try await services.chat.reply(to: [ChatMessage(role: .user, text: prompt)], model: alias) {
             results[index].answer += token
+            activity.token()
         }
         try Task.checkCancellation()
 
         phase = .running("Benchmarking \(name)…")
+        activity.benchmark(completed: 0, total: settings.totalRuns, lastRun: nil)
         let result = try await services.benchmark.benchmark(model: alias, settings: settings) { [weak self] progress in
             Task { @MainActor [weak self] in
                 guard let self, case .running = phase else { return }
                 phase = .running("Benchmarking \(name): run \(progress.completed) of \(progress.total)")
+                activity.benchmark(completed: progress.completed, total: progress.total, lastRun: progress.lastRun)
             }
         }
         results[index].benchmark = result
+        activity.finish(
+            detail: "\(result.runs.count) runs",
+            tokensPerSecond: result.meanDecodeTokensPerSecond,
+            timeToFirstTokenMs: Int(result.meanTtftMs)
+        )
         try Task.checkCancellation()
     }
 }

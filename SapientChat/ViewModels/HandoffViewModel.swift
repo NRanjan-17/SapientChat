@@ -62,7 +62,7 @@ final class HandoffViewModel {
     }
 
     private func run(_ handoff: HandoffRequest) async {
-        let response = await router.handle(handoff.request)
+        let response = await router.handle(handoff.request, source: handoff.source)
         var body = Data()
         do {
             switch response.body {
