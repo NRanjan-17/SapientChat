@@ -5,9 +5,12 @@ import SwiftUI
 struct CompareView: View {
     @Bindable var viewModel: CompareViewModel
     let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
+    /// Single Model / Compare, first in the setup column.
+    var modeSwitch: BenchmarkModeSwitch?
 
     var body: some View {
         SetupResultsLayout {
+            if let modeSwitch { modeSwitch }
             Section {
                 ModelPickerField(title: "Model A", selection: viewModel.modelA, makeSelector: makeSelector, onSelect: viewModel.selectModelA)
                 ModelPickerField(title: "Model B", selection: viewModel.modelB, makeSelector: makeSelector, onSelect: viewModel.selectModelB)

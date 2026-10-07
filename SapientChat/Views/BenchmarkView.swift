@@ -5,9 +5,12 @@ import SwiftUI
 struct BenchmarkView: View {
     @Bindable var viewModel: BenchmarkViewModel
     let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
+    /// Single Model / Compare, first in the setup column.
+    var modeSwitch: BenchmarkModeSwitch?
 
     var body: some View {
         SetupResultsLayout {
+            if let modeSwitch { modeSwitch }
             Section {
                 if viewModel.availableModels.isEmpty {
                     LabeledContent("Model", value: viewModel.model)

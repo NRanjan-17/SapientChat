@@ -32,6 +32,9 @@ struct ChatListView: View {
         }
         .readableContentWidth(720)
         .navigationTitle("Chats")
+        // A large title on the left, on the buttons' row (iPad split view
+        // otherwise centres a small one).
+        .toolbarTitleDisplayMode(.inlineLarge)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("New Chat", systemImage: "square.and.pencil", action: viewModel.newChat)
