@@ -6,23 +6,30 @@ extension PhoneModel {
         displayName.split(separator: "-").first.map(String.init) ?? displayName
     }
 
-    /// A color per family, so models are easy to tell apart at a glance.
-    var tint: Color {
+    /// The colour for this model's actions and progress: the app accent
+    /// for every family, so the list isn't a rainbow; the logo tells
+    /// families apart.
+    var tint: Color { .accentColor }
+
+    /// Asset name of the maker's logo; nil falls back to the SAPIENT mark.
+    var logoAsset: String? {
         let family = family.lowercased()
-        return if family.hasPrefix("smollm") {
-            .purple
-        } else if family.hasPrefix("gemma") {
-            .blue
+        return if family.hasPrefix("llama") {
+            "LogoMeta"
         } else if family.hasPrefix("qwen") {
-            .orange
-        } else if family.hasPrefix("llama") {
-            .teal
+            "LogoQwen"
+        } else if family.hasPrefix("smollm") || family.hasPrefix("smolvlm") {
+            "LogoHuggingFace"
         } else if family.hasPrefix("phi") {
-            .green
-        } else if family.hasPrefix("mistral") {
-            .red
+            "LogoMicrosoft"
+        } else if family.hasPrefix("deepseek") {
+            "LogoDeepSeek"
+        } else if family.hasPrefix("gemma") || family.hasPrefix("medgemma") {
+            "LogoGemma"
+        } else if family.hasPrefix("mistral") || family.hasPrefix("mixtral") {
+            "LogoMistral"
         } else {
-            .indigo
+            nil
         }
     }
 
@@ -34,39 +41,52 @@ extension PhoneModel {
     /// Short storage format for a chip: "4-bit", "8-bit", "Full".
     var formatChip: (text: String, color: Color) {
         if params.contains("Q4") {
-            ("4-bit", .green)
+            ("4-bit", .secondary)
         } else if params.contains("Q8") {
-            ("8-bit", .mint)
+            ("8-bit", .secondary)
         } else {
-            ("Full", .orange)
+            ("Full", .secondary)
         }
     }
 }
 
-/// The model's colored tile, with a memory-chip badge while it's in memory.
+/// The model maker's logo on a neutral tile (the SAPIENT mark when the
+/// maker has none), with a memory-chip badge while it's in memory.
 struct ModelTile: View {
     let model: PhoneModel
     var isLoaded = false
     var size: CGFloat = 44
 
     var body: some View {
-        Image(systemName: "square.stack.3d.up")
-            .font(.system(size: size * 0.45, weight: .medium))
-            .foregroundStyle(.white)
+        logo
+            .frame(width: size * 0.58, height: size * 0.58)
             .frame(width: size, height: size)
-            .background(model.tint.gradient, in: .rect(cornerRadius: size * 0.26))
+            .background(Color(.tertiarySystemFill), in: .rect(cornerRadius: size * 0.26))
             .overlay(alignment: .bottomTrailing) {
                 if isLoaded {
                     Image(systemName: "memorychip.fill")
                         .font(.system(size: size * 0.24, weight: .bold))
                         .foregroundStyle(.white)
                         .padding(size * 0.08)
-                        .background(.green, in: .circle)
+                        .background(.tint, in: .circle)
                         .overlay(Circle().stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
                         .offset(x: size * 0.12, y: size * 0.12)
                 }
             }
             .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private var logo: some View {
+        if let asset = model.logoAsset {
+            Image(asset)
+                .resizable()
+                .scaledToFit()
+        } else {
+            Image(.logoSapient)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(.tint)
+        }
     }
 }
 
@@ -97,7 +117,7 @@ struct ModelSpecChips: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Chip(model.sizeText, color: model.tint)
+            Chip(model.sizeText)
             Chip(model.formatChip.text, color: model.formatChip.color)
             Chip("\(Format.compactBytes(model.estimatedMemoryBytes)) RAM")
         }

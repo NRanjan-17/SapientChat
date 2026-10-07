@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One model in the manager, App Store style: a colored tile, name, spec
+/// One model in the manager, App Store style: the maker's logo, name, spec
 /// chips and a status line, with one primary action on the right and the
 /// rest (including Delete) in a ⋯ menu.
 struct ModelManagerRow: View {
@@ -11,6 +11,7 @@ struct ModelManagerRow: View {
         let unload: (ModelManagerViewModel.Row) -> Void
         let startChat: (ModelManagerViewModel.Row) -> Void
         let delete: (ModelManagerViewModel.Row) -> Void
+        let contextWindow: (ModelManagerViewModel.Row) -> Void
     }
 
     let row: ModelManagerViewModel.Row
@@ -51,20 +52,20 @@ struct ModelManagerRow: View {
         case .loading:
             IconText("Loading into memory…", systemImage: "memorychip")
                 .font(.caption)
-                .foregroundStyle(.yellow)
+                .foregroundStyle(.secondary)
         case nil:
             Group {
                 if row.isLoaded {
                     IconText("In memory · \(Format.bytes(row.download.bytes)) on device", systemImage: "memorychip.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(.tint)
                 } else {
                     switch row.download {
                     case .downloaded(let bytes):
                         IconText("Downloaded · \(Format.bytes(bytes))", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(.secondary)
                     case .partial(let bytes):
                         IconText("Paused at \(Format.bytes(bytes))", systemImage: "arrow.down.circle.dotted")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(.secondary)
                     case .notDownloaded:
                         if row.fits {
                             IconText("Not downloaded", systemImage: "arrow.down.circle")

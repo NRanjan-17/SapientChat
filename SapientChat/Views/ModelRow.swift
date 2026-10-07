@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One model in a chat's model picker: colored tile, name, spec chips and
+/// One model in a chat's model picker: the maker's logo, name, spec chips and
 /// download state, with a checkmark on the chat's current model.
 struct ModelRow: View {
     let row: ModelSelectorViewModel.Row
@@ -42,15 +42,15 @@ struct ModelRow: View {
                 .foregroundStyle(.red)
         } else if row.isLoaded {
             IconText("In memory", systemImage: "memorychip.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(.tint)
         } else {
             switch row.download {
             case .downloaded(let bytes):
                 IconText("Downloaded · \(Format.bytes(bytes))", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.secondary)
             case .partial(let bytes):
                 IconText("Paused at \(Format.bytes(bytes)) · resumes when used", systemImage: "arrow.down.circle.dotted")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.secondary)
             case .notDownloaded:
                 IconText("Downloads when first used", systemImage: "arrow.down.circle")
                     .foregroundStyle(.secondary)

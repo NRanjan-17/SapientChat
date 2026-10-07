@@ -26,7 +26,7 @@ struct MemorySummarySection: View {
                             ZStack(alignment: .leading) {
                                 Capsule().fill(Color(.tertiarySystemFill))
                                 Capsule()
-                                    .fill(LinearGradient(colors: [.green, pressureColor], startPoint: .leading, endPoint: .trailing))
+                                    .fill(pressureColor)
                                     .frame(width: max(8, proxy.size.width * fraction))
                             }
                         }
@@ -42,7 +42,7 @@ struct MemorySummarySection: View {
                     HStack(spacing: 4) {
                         ForEach(0..<capacity, id: \.self) { slot in
                             Capsule()
-                                .fill(slot < loaded.count ? AnyShapeStyle(.green.gradient) : AnyShapeStyle(Color(.tertiarySystemFill)))
+                                .fill(slot < loaded.count ? AnyShapeStyle(.tint) : AnyShapeStyle(Color(.tertiarySystemFill)))
                                 .frame(width: 18, height: 8)
                         }
                     }
@@ -69,14 +69,13 @@ struct MemorySummarySection: View {
 
     private var pressureColor: Color {
         switch usedFraction ?? 0 {
-        case ..<0.6: .green
-        case ..<0.85: .orange
-        default: .red
+        case ..<0.85: .accentColor
+        default: .orange
         }
     }
 }
 
-/// Loaded model names as green chips, wrapping onto new lines.
+/// Loaded model names as chips, wrapping onto new lines.
 private struct FlowChips: View {
     let items: [String]
 
@@ -89,7 +88,7 @@ private struct FlowChips: View {
 
     private var chips: some View {
         ForEach(items, id: \.self) { name in
-            Chip(name, color: .green)
+            Chip(name, color: .accentColor)
         }
     }
 }

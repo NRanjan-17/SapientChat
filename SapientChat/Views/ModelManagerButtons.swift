@@ -31,7 +31,7 @@ struct ModelManagerButtons: View {
                 .frame(width: 30, height: 30)
         case nil:
             if row.isLoaded {
-                PillButton("Chat", tint: .green, filled: true) { actions.startChat(row) }
+                PillButton("Chat", tint: .accentColor, filled: true) { actions.startChat(row) }
             } else if row.download.isDownloaded {
                 PillButton("Load", tint: row.model.tint) { actions.load(row) }
                     .disabled(!row.fits)
@@ -64,6 +64,10 @@ struct ModelManagerMenuItems: View {
                 Button(row.download.bytes > 0 ? "Resume Download" : "Download", systemImage: "arrow.down.circle") {
                     actions.download(row)
                 }
+            }
+            if ContextWindowStore.isAdjustable(row.model) {
+                Button("Context Window…", systemImage: "text.alignleft") { actions.contextWindow(row) }
+                    .disabled(row.activity != nil)
             }
             if row.canDelete {
                 Divider()
