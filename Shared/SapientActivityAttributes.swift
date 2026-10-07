@@ -8,6 +8,8 @@ nonisolated struct SapientActivityAttributes: ActivityAttributes {
     nonisolated struct ContentState: Codable, Hashable, Sendable {
         nonisolated enum Phase: String, Codable, Hashable, Sendable {
             case preparing, downloading, loading, generating, benchmarking, finished, failed
+            /// The API server is up, waiting for or between requests.
+            case serving
         }
 
         var phase: Phase
@@ -16,6 +18,8 @@ nonisolated struct SapientActivityAttributes: ActivityAttributes {
         /// 0…1 for downloads and benchmark runs; nil when unknown.
         var progress: Double?
         var tokens: Int = 0
+        /// Requests the server has answered since it started (server activity only).
+        var requests: Int = 0
         var tokensPerSecond: Double?
         var timeToFirstTokenMs: Int?
         var startedAt: Date
@@ -41,6 +45,7 @@ extension SapientActivityAttributes.ContentState.Phase {
         case .benchmarking: "Benchmarking"
         case .finished: "Done"
         case .failed: "Failed"
+        case .serving: "Serving"
         }
     }
 }

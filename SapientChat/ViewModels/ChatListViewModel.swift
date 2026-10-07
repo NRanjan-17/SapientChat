@@ -39,9 +39,10 @@ final class ChatListViewModel {
         device = DeviceStatus(memoryService: services.memory, thermalService: services.thermal)
         let router = ServeRouter(services: services, device: device)
         router.liveActivities = liveActivities
-        server = ServerViewModel(router: router)
+        server = ServerViewModel(router: router, liveActivities: liveActivities)
         handoff = HandoffViewModel(router: router)
         models = ModelManagerViewModel(services: services, device: device)
+        router.onModelPhase = { [models] alias, phase in models.apiPhase(phase, for: alias) }
         let catalog = services.catalog.chatModels()
         let firstModel = store.conversations().first?.modelAlias ?? PhoneModel.defaultAlias
         benchmark = BenchmarkViewModel(

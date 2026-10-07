@@ -126,6 +126,7 @@ private struct PhaseLine: View {
         case .benchmarking: "gauge.with.dots.needle.67percent"
         case .finished: "checkmark.circle.fill"
         case .failed: "exclamationmark.triangle.fill"
+        case .serving: "antenna.radiowaves.left.and.right"
         }
     }
 }
@@ -135,7 +136,14 @@ private struct StatsRow: View {
     let state: SapientActivityAttributes.ContentState
 
     var body: some View {
-        if state.tokens > 0 || state.tokensPerSecond != nil {
+        if state.phase == .serving {
+            HStack(spacing: 16) {
+                stat("\(state.requests)", state.requests == 1 ? "request" : "requests")
+                if let rate = state.tokensPerSecond {
+                    stat(String(format: "%.1f", rate), "last tok/s")
+                }
+            }
+        } else if state.tokens > 0 || state.tokensPerSecond != nil {
             HStack(spacing: 16) {
                 stat(state.tokensPerSecond.map { String(format: "%.1f", $0) } ?? "–", "tok/s")
                 stat("\(state.tokens)", "tokens")
@@ -183,6 +191,8 @@ private struct CompactValue: View {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
             case .finished:
                 Image(systemName: "checkmark").foregroundStyle(.tint)
+            case .serving:
+                Text("\(state.requests)")
             default:
                 if let rate = state.tokensPerSecond {
                     Text(String(format: "%.0f t/s", rate))

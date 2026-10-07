@@ -128,3 +128,70 @@ struct ServerBackgroundTests {
         #expect(second.runsInBackground == ServerViewModel.canRunInBackground)
     }
 }
+
+@MainActor
+struct ServerLiveActivityTests {
+    @Test func pingsAndRequestsUpdateTheServerActivity() {
+        let service = RecordingLiveActivities()
+        let clock = ManualClock()
+        let server = ServerLiveActivity(service: service, minimumInterval: 0, clock: { clock.now })
+        server.recorded(method: "GET", path: "/v1/ping", status: 200)
+        #expect(service.started.isEmpty, "nothing until serving begins")
+
+        server.begin(endpoint: "192.168.1.46:11435")
+        #expect(service.started.map(\.title) == ["API server"])
+        #expect(service.started.first?.model == "192.168.1.46:11435")
+
+        server.recorded(method: "GET", path: "/v1/ping", status: 200)
+        #expect(service.updates.last?.requests == 1)
+        #expect(service.updates.last?.detail == "Last: GET /v1/ping")
+
+        // A chat request updates the same activity instead of starting one.
+        let tracker = LiveActivityTracker(service: server, title: "API request", minimumInterval: 0, clock: { clock.now })
+        tracker.start(model: "SmolLM2 135M")
+        tracker.generating()
+        clock.advance(0.1)
+        tracker.token()
+        #expect(service.started.count == 1)
+        #expect(service.updates.last?.phase == .generating)
+        #expect(service.updates.last?.detail == "SmolLM2 135M")
+        tracker.finish()
+        #expect(service.ended.isEmpty, "the server activity stays")
+        #expect(service.updates.last?.phase == .serving)
+        #expect(service.updates.last?.detail == "Last: SmolLM2 135M · 1 tokens")
+
+        server.finish()
+        #expect(service.ended.last?.phase == .finished)
+    }
+
+    @Test func withoutServingRequestsGetTheirOwnActivity() {
+        let service = RecordingLiveActivities()
+        let server = ServerLiveActivity(service: service)
+        let tracker = LiveActivityTracker(service: server, title: "Request from Shortcuts")
+        tracker.start(model: "m")
+        tracker.finish()
+        #expect(service.started.map(\.title) == ["Request from Shortcuts"])
+        #expect(service.ended.count == 1)
+    }
+}
+
+@MainActor
+struct APIDownloadsShowInModelsTabTests {
+    @Test func aDownloadOverTheAPIShowsOnItsRow() async throws {
+        let storage = FakeStorage()
+        let chat = ControlledChatService()
+        let services = makeServices(chat: chat, storage: storage, downloads: FakeDownloader(storage: storage, hangs: true))
+        let device = DeviceStatus(memoryService: FixedMemory(), thermalService: SilentThermalService())
+        let router = ServeRouter(services: services, device: device)
+        let manager = ModelManagerViewModel(services: services, device: device)
+        router.onModelPhase = { alias, phase in manager.apiPhase(phase, for: alias) }
+        await manager.refresh()
+
+        let request = HTTPRequest(method: "POST", path: "/v1/models/download", body: Data(#"{"model":"\#(TestModels.small.alias)"}"#.utf8))
+        let call = Task { await router.handle(request) }
+        #expect(await eventually { manager.rows.first { $0.model == TestModels.small }?.activity != nil })
+        call.cancel()
+        _ = await call.value
+        #expect(await eventually { manager.rows.first { $0.model == TestModels.small }?.activity == nil })
+    }
+}

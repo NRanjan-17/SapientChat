@@ -53,7 +53,7 @@ final class ServerViewModel: Identifiable {
         }
     }
     /// Whether this build can keep the server running in the background.
-    static let canRunInBackground: Bool = {
+    nonisolated static let canRunInBackground: Bool = {
         #if SAPIENT_BACKGROUND_SERVER
         true
         #else
@@ -81,11 +81,22 @@ final class ServerViewModel: Identifiable {
     @ObservationIgnored private var wantsRunning = false
     @ObservationIgnored private let keeper: any BackgroundKeeping
     @ObservationIgnored private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+    /// The Dynamic Island while serving in the background.
+    @ObservationIgnored let serverActivity: ServerLiveActivity
 
     /// `router` is shared with the URL handoff, so both see the same API key.
-    init(router: ServeRouter, defaults: UserDefaults = .standard, keeper: (any BackgroundKeeping)? = nil) {
+    init(
+        router: ServeRouter,
+        defaults: UserDefaults = .standard,
+        keeper: (any BackgroundKeeping)? = nil,
+        liveActivities: any LiveActivityService = NoLiveActivities()
+    ) {
         self.defaults = defaults
         self.router = router
+        serverActivity = ServerLiveActivity(service: liveActivities)
+        // Request trackers update the server's activity while it's up, and
+        // start their own otherwise.
+        router.liveActivities = serverActivity
         self.keeper = keeper ?? Self.defaultKeeper()
         let runsInBackground = Self.canRunInBackground && defaults.bool(forKey: Keys.runsInBackground)
         self.runsInBackground = runsInBackground
@@ -197,8 +208,10 @@ final class ServerViewModel: Identifiable {
         #endif
     }
 
-    /// Silent audio runs only while the server is on with background mode on.
+    /// Silent audio and the server's Dynamic Island run only while the
+    /// server is on with background mode on.
     private func updateKeeper() {
+        defer { updateServerActivity() }
         if wantsRunning && runsInBackground {
             do {
                 try keeper.start()
@@ -210,6 +223,14 @@ final class ServerViewModel: Identifiable {
             }
         } else {
             keeper.stop()
+        }
+    }
+
+    private func updateServerActivity() {
+        if wantsRunning && runsInBackground {
+            serverActivity.begin(endpoint: endpoints.last.map { $0.url.replacing("http://", with: "") } ?? "port \(port)")
+        } else {
+            serverActivity.finish()
         }
     }
 
@@ -242,6 +263,7 @@ final class ServerViewModel: Identifiable {
     }
 
     private func record(_ entry: ServeRouter.LogEntry) {
+        serverActivity.recorded(method: entry.method, path: entry.path, status: entry.status)
         log.insert(entry, at: 0)
         if log.count > Self.logLimit { log.removeLast(log.count - Self.logLimit) }
     }

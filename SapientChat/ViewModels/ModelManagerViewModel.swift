@@ -221,13 +221,30 @@ final class ModelManagerViewModel: Identifiable {
         Task { await refresh() }
     }
 
-    private func setActivity(_ activity: Activity, for alias: String) {
-        activities[alias] = activity
-        let phase: ModelPhase = switch activity {
-        case .downloading(let progress): .downloading(progress)
-        case .loading: .loading
+    /// A download or load an API request is doing: shown on the model's row
+    /// (its Dynamic Island is the request's own). nil when it's done.
+    func apiPhase(_ phase: ModelPhase?, for alias: String) {
+        guard tasks[alias] == nil else { return } // the Models tab's own work wins
+        guard let phase else {
+            activities[alias] = nil
+            Task { await refresh() }
+            return
         }
-        island(for: alias).phase(phase)
+        switch phase {
+        case .downloading(let progress): setActivity(.downloading(progress), for: alias, showsIsland: false)
+        case .loading: setActivity(.loading, for: alias, showsIsland: false)
+        }
+    }
+
+    private func setActivity(_ activity: Activity, for alias: String, showsIsland: Bool = true) {
+        activities[alias] = activity
+        if showsIsland {
+            let phase: ModelPhase = switch activity {
+            case .downloading(let progress): .downloading(progress)
+            case .loading: .loading
+            }
+            island(for: alias).phase(phase)
+        }
         rows = rows.map { row in
             guard row.model.alias == alias else { return row }
             return Row(model: row.model, download: row.download, isLoaded: row.isLoaded, fits: row.fits, activity: activity)

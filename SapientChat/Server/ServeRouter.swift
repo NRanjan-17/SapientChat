@@ -33,6 +33,9 @@ final class ServeRouter {
     /// Requests must carry `Authorization: Bearer <apiKey>` when set.
     var apiKey: String?
     var onRequest: ((LogEntry) -> Void)?
+    /// Told each download/load step of a model an API request prepares, then
+    /// nil when it's done, so the Models tab shows API work too.
+    var onModelPhase: ((String, ModelPhase?) -> Void)?
     /// Shows chat, completion, download and load requests in the Dynamic Island.
     var liveActivities: any LiveActivityService = NoLiveActivities()
 
@@ -187,8 +190,12 @@ final class ServeRouter {
         let downloads = services.downloads
         let alias = model.alias
         guard stream else {
+            defer { onModelPhase?(alias, nil) }
             do {
-                try await ModelPreparer(services: services, device: device).download(alias) { activity?.phase($0) }
+                try await ModelPreparer(services: services, device: device).download(alias) { phase in
+                    activity?.phase(phase)
+                    onModelPhase?(alias, phase)
+                }
                 activity?.finish(detail: "Downloaded")
                 return .json(ModelActionResponse(model: alias, status: "downloaded", residentModels: await services.chat.loadedModels()))
             } catch {
@@ -197,13 +204,17 @@ final class ServeRouter {
             }
         }
         let (events, continuation) = AsyncThrowingStream<DownloadEvent, any Error>.makeStream()
+        let reportPhase = onModelPhase
         let task = Task {
             do {
                 // Progress arrives on the engine's thread.
                 let latest = Mutex(DownloadProgress.starting)
                 try await downloads.download(model: alias) { progress in
                     latest.withLock { $0 = progress }
-                    Task { @MainActor in activity?.phase(.downloading(progress)) }
+                    Task { @MainActor in
+                        activity?.phase(.downloading(progress))
+                        reportPhase?(alias, .downloading(progress))
+                    }
                     continuation.yield(DownloadEvent(
                         model: alias, status: "downloading",
                         downloadedBytes: progress.downloadedBytes, totalBytes: progress.totalBytes
@@ -220,6 +231,8 @@ final class ServeRouter {
                 activity?.fail(Self.describe(error))
                 continuation.finish(throwing: error)
             }
+            // After the last progress hop, so the row doesn't reappear.
+            Task { @MainActor in reportPhase?(alias, nil) }
         }
         continuation.onTermination = { _ in task.cancel() }
         return eventStream(events) { event in
@@ -511,8 +524,13 @@ final class ServeRouter {
             ), status: 400)))
         }
         activity?.start(model: model.displayName)
+        let alias = model.alias
+        defer { onModelPhase?(alias, nil) }
         do {
-            let backend = try await ModelPreparer(services: services, device: device).prepare(model.alias) { activity?.phase($0) }
+            let backend = try await ModelPreparer(services: services, device: device).prepare(alias) { phase in
+                activity?.phase(phase)
+                onModelPhase?(alias, phase)
+            }
             return .success((model, backend))
         } catch ChatViewModelError.wontFit(let message) {
             activity?.fail(message)
