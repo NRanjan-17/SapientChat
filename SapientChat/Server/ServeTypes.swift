@@ -166,6 +166,12 @@ nonisolated struct ModelList: Codable, Sendable {
     let residentModels: [String]
 }
 
+/// `GET /v1/ping`: the server is up. No model or memory work.
+nonisolated struct PingResponse: Codable, Sendable {
+    var status = "ok"
+    let version: String
+}
+
 nonisolated struct HealthResponse: Codable, Sendable {
     var status = "ok"
     let version: String

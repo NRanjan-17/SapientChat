@@ -48,6 +48,7 @@ struct RootView: View {
             viewModel.server.appDidBecomeActive()
         } else {
             viewModel.appDidLeaveForeground()
+            viewModel.server.appDidLeaveForeground()
         }
     }
 }

@@ -39,6 +39,9 @@ actor SapientChatService: ChatService {
         // a phone, 8192 otherwise).
         var options = GenerationOptions(maxTokens: 512)
         options.contextLength = contextWindows.tokens(for: model).map(UInt32.init)
+        // While the server runs in the background, models load on the CPU:
+        // iOS doesn't allow GPU work from a background app.
+        if EngineBackendPreference.cpuOnly() { options.backend = "cpu" }
         let loaded = try await loadSession(model: model, options: options)
         slots.insert(model, session: loaded)
         return loaded.backendLabel()

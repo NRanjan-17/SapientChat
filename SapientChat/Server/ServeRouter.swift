@@ -17,8 +17,9 @@ import Synchronization
 /// - Audio and robot-action routes answer 501.
 ///
 /// SapientChat adds model management that the desktop server doesn't
-/// need: `GET /v1/catalog` and `POST /v1/models/{download,load,unload,delete}`,
-/// so other apps can see what this device offers and manage it.
+/// need: `GET /v1/catalog` (filter with `?status=available|downloaded|loaded`),
+/// `POST /v1/models/{download,load,unload,delete}` and `GET /v1/ping`, so
+/// other apps can see what this device offers and manage it.
 final class ServeRouter {
     /// One handled request, for the server screen's log.
     struct LogEntry: Identifiable, Sendable {
@@ -73,12 +74,14 @@ final class ServeRouter {
             return await models()
         case ("GET", "/v1/health"):
             return await health()
+        case ("GET", "/v1/ping"):
+            return .json(PingResponse(version: SapientVersion.current))
         case ("POST", "/v1/chat/completions"):
             return await chatCompletions(request, activity: activity)
         case ("POST", "/v1/completions"):
             return await completions(request, activity: activity)
         case ("GET", "/v1/catalog"):
-            return await catalog()
+            return await catalog(request)
         case ("POST", "/v1/models/download"):
             return await download(request, activity: activity)
         case ("POST", "/v1/models/load"):
@@ -125,22 +128,48 @@ final class ServeRouter {
 
     // MARK: Model management
 
-    private func catalog() async -> HTTPResponse {
+    /// Which models `GET /v1/catalog` lists.
+    enum CatalogFilter: String, CaseIterable, Sendable {
+        /// Not on this device yet (including partly downloaded ones).
+        case available
+        case downloaded
+        /// In memory now.
+        case loaded
+
+        func includes(_ model: CatalogResponse.Model) -> Bool {
+            switch self {
+            case .available: !model.downloaded
+            case .downloaded: model.downloaded
+            case .loaded: model.loaded
+            }
+        }
+    }
+
+    private func catalog(_ request: HTTPRequest) async -> HTTPResponse {
+        var filter: CatalogFilter?
+        if let status = request.query["status"], !status.isEmpty {
+            guard let parsed = CatalogFilter(rawValue: status) else {
+                let allowed = CatalogFilter.allCases.map(\.rawValue).joined(separator: ", ")
+                return .json(ServeErrorBody.invalidRequest("Unknown status '\(status)'. Use one of: \(allowed)."), status: 400)
+            }
+            filter = parsed
+        }
         let resident = await services.chat.loadedModels()
         device.refreshMemory()
         let catalog = services.catalog.chatModels()
         let loaded = resident.map { alias in (alias: alias, model: catalog.first { $0.alias == alias }) }
+        let models = catalog.map { model in
+            let download = services.storage.download(forRepo: model.repoId)
+            return CatalogResponse.Model(
+                id: model.alias, name: model.displayName, params: model.params, format: model.format,
+                parameterBillions: model.billions, estimatedMemoryBytes: model.estimatedMemoryBytes,
+                downloaded: download.isDownloaded, downloadedBytes: download.bytes,
+                loaded: resident.contains(model.alias),
+                fits: MemoryPlanner.plan(loading: model, loaded: loaded, availableBytes: device.memory.availableBytes).fits
+            )
+        }
         return .json(CatalogResponse(
-            data: catalog.map { model in
-                let download = services.storage.download(forRepo: model.repoId)
-                return CatalogResponse.Model(
-                    id: model.alias, name: model.displayName, params: model.params, format: model.format,
-                    parameterBillions: model.billions, estimatedMemoryBytes: model.estimatedMemoryBytes,
-                    downloaded: download.isDownloaded, downloadedBytes: download.bytes,
-                    loaded: resident.contains(model.alias),
-                    fits: MemoryPlanner.plan(loading: model, loaded: loaded, availableBytes: device.memory.availableBytes).fits
-                )
-            },
+            data: filter.map { filter in models.filter(filter.includes) } ?? models,
             residentModels: resident,
             maxResidentModels: LoadedSlots<Void>.defaultCapacity
         ))
@@ -494,6 +523,16 @@ final class ServeRouter {
         }
     }
 
+    /// Releases every model, e.g. so they reload on a different backend.
+    func releaseAllModels() async {
+        await services.chat.unloadAll()
+    }
+
+    /// Every model this device's catalog offers.
+    func catalogModels() -> [PhoneModel] {
+        services.catalog.chatModels()
+    }
+
     /// A catalog model by alias, or by name without the `openhorizon/` prefix.
     func resolve(_ name: String) -> PhoneModel? {
         services.catalog.chatModels().first { $0.alias == name || $0.displayName == name }
@@ -502,7 +541,7 @@ final class ServeRouter {
     // MARK: Helpers
 
     private static let routes: Set<String> = [
-        "/v1/models", "/v1/health", "/v1/chat/completions", "/v1/completions",
+        "/v1/models", "/v1/health", "/v1/ping", "/v1/chat/completions", "/v1/completions",
         "/v1/catalog", "/v1/models/download", "/v1/models/load", "/v1/models/unload", "/v1/models/delete",
         "/v1/audio/transcriptions", "/v1/audio/speech", "/v1/actions",
     ]

@@ -468,7 +468,7 @@
 				DEVELOPMENT_TEAM = 667V7CCT79;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "SapientChat-Info.plist";
+				INFOPLIST_FILE = "SapientChat-Info-Debug.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "SapientChat serves its on-device models to other devices on your network when you turn on the API server.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
@@ -485,6 +485,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SAPIENT_BACKGROUND_SERVER";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
