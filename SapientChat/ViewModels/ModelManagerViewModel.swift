@@ -108,6 +108,23 @@ final class ModelManagerViewModel: Identifiable {
         }
     }
 
+    /// The context window picked for `row`'s model; nil is the engine default.
+    func contextWindow(for row: Row) -> Int? {
+        services.contextWindows.tokens(for: row.model.alias)
+    }
+
+    /// Saves a new context window, reloading the model if it's in memory.
+    func setContextWindow(_ tokens: Int?, for row: Row) {
+        guard tokens != contextWindow(for: row) else { return }
+        let alias = row.model.alias
+        services.contextWindows.set(tokens, for: alias)
+        guard row.isLoaded else { return }
+        run(alias) { [self] in
+            await services.chat.unload(model: alias)
+            _ = try await prepare(alias)
+        }
+    }
+
     func cancel(_ row: Row) {
         tasks[row.model.alias]?.cancel()
     }

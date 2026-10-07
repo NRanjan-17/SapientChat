@@ -209,6 +209,27 @@ final class ChatViewModel {
         messages.last { $0.stats != nil }?.stats
     }
 
+    /// The context window picked for this chat's model; nil is the default.
+    var contextWindow: Int? {
+        get { services.contextWindows.tokens(for: conversation.modelAlias) }
+        set { setContextWindow(newValue) }
+    }
+
+    /// Saves a new context window and, if the model is in memory, reloads
+    /// it so the next reply uses it.
+    func setContextWindow(_ tokens: Int?) {
+        let alias = conversation.modelAlias
+        guard tokens != services.contextWindows.tokens(for: alias) else { return }
+        services.contextWindows.set(tokens, for: alias)
+        guard modelDetails != nil else { return }
+        Task {
+            await services.chat.unload(model: alias)
+            modelDetails = nil
+            _ = try? await ModelPreparer(services: services, device: device).prepare(alias) { _ in }
+            await refreshModelDetails()
+        }
+    }
+
     /// Reads engine details for the Model Stats sheet.
     func refreshModelDetails() async {
         device.refreshMemory()

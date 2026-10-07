@@ -9,9 +9,11 @@ struct AppServices {
     let memory: any MemoryService
     let storage: any ModelStorageService
     let downloads: any ModelDownloadService
+    /// Per-model context windows the user picked; the engine reads them at load.
+    var contextWindows = ContextWindowStore.standard
 
     static func live() -> AppServices {
-        let engine = SapientChatService()
+        let engine = SapientChatService(contextWindows: .standard)
         return AppServices(
             chat: engine,
             benchmark: engine,

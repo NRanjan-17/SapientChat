@@ -202,13 +202,20 @@ func makeServices(
     benchmark: any BenchmarkService = InstantBenchmarkService(),
     memory: FixedMemory = FixedMemory(),
     storage: FakeStorage = downloadedStorage(),
-    downloads: (any ModelDownloadService)? = nil
+    downloads: (any ModelDownloadService)? = nil,
+    contextWindows: ContextWindowStore = makeContextWindowStore()
 ) -> AppServices {
     AppServices(
         chat: chat, benchmark: benchmark, catalog: FixedCatalog(),
         thermal: SilentThermalService(), memory: memory, storage: storage,
-        downloads: downloads ?? FakeDownloader(storage: storage)
+        downloads: downloads ?? FakeDownloader(storage: storage),
+        contextWindows: contextWindows
     )
+}
+
+/// A context window store of its own, so tests never touch the app's settings.
+func makeContextWindowStore() -> ContextWindowStore {
+    ContextWindowStore(defaults: UserDefaults(suiteName: "context-windows-\(UUID().uuidString)")!)
 }
 
 /// A fresh in-memory SwiftData container (each test gets its own).

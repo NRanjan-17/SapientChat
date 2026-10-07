@@ -12,8 +12,13 @@ actor SapientChatService: ChatService {
     /// The engine call behind the latest reply or benchmark. It can outlive
     /// the Swift consumer by a token after a stop, so later work waits for it.
     private var generation: Task<Void, Never>?
+    private let contextWindows: ContextWindowStore
 
-    init(cacheDirectory: URL = .cachesDirectory.appending(path: "sapient")) {
+    init(
+        cacheDirectory: URL = .cachesDirectory.appending(path: "sapient"),
+        contextWindows: ContextWindowStore = .standard
+    ) {
+        self.contextWindows = contextWindows
         // Keep model downloads inside the app sandbox so the OS can reclaim
         // them and uninstalling the app removes them.
         setCacheDir(path: cacheDirectory.path(percentEncoded: false))
@@ -29,9 +34,12 @@ actor SapientChatService: ChatService {
             slots.remove(leastRecent)
         }
         // Greedy decoding (no sampling fields set): deterministic, the right
-        // default for small models. The context window is left to the engine
-        // (3072 tokens for models above 1.5B on a phone, 8192 otherwise).
-        let loaded = try await loadSession(model: model, options: GenerationOptions(maxTokens: 512))
+        // default for small models. The context window is the user's pick for
+        // this model, else the engine's (3072 tokens for models above 1.5B on
+        // a phone, 8192 otherwise).
+        var options = GenerationOptions(maxTokens: 512)
+        options.contextLength = contextWindows.tokens(for: model).map(UInt32.init)
+        let loaded = try await loadSession(model: model, options: options)
         slots.insert(model, session: loaded)
         return loaded.backendLabel()
     }

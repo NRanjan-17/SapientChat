@@ -7,6 +7,7 @@ struct ModelManagerView: View {
     @State private var pendingDelete: ModelManagerViewModel.Row?
     @State private var isConfirmingDelete = false
     @State private var isConfirmingDeleteAll = false
+    @State private var contextWindowRow: ModelManagerViewModel.Row?
 
     var body: some View {
         NavigationStack {
@@ -69,6 +70,15 @@ struct ModelManagerView: View {
                 ModelManagerSection(title: "Not downloaded", rows: viewModel.notDownloadedRows, actions: actions)
             }
             .navigationTitle("Models")
+            .sheet(item: $contextWindowRow) { row in
+                ContextWindowSheet(
+                    model: row.model,
+                    current: viewModel.contextWindow(for: row),
+                    isLoaded: row.isLoaded
+                ) { tokens in
+                    viewModel.setContextWindow(tokens, for: row)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -109,7 +119,8 @@ struct ModelManagerView: View {
             load: viewModel.load,
             unload: { row in Task { await viewModel.unload(row) } },
             startChat: viewModel.startChat,
-            delete: confirmDelete
+            delete: confirmDelete,
+            contextWindow: { contextWindowRow = $0 }
         )
     }
 
