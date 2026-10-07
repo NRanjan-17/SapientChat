@@ -6,13 +6,30 @@ struct CompareResultsView: View {
     let names: [String]
     let prompt: String
     let decodeDifferencePercent: Double?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
-        ForEach(Array(results.enumerated()), id: \.element.id) { index, result in
-            Section("\(index == 0 ? "A" : "B") · \(names[index])") {
-                Text(result.answer.isEmpty ? "…" : result.answer)
-                    .textSelection(.enabled)
-                    .foregroundStyle(result.answer.isEmpty ? .secondary : .primary)
+        if horizontalSizeClass == .regular {
+            // Wide screens: the two answers side by side.
+            Section("Answers") {
+                HStack(alignment: .top, spacing: 16) {
+                    ForEach(Array(results.enumerated()), id: \.element.id) { index, result in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("\(index == 0 ? "A" : "B") · \(names[index])")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            answer(result)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                        if index == 0 && results.count > 1 { Divider() }
+                    }
+                }
+            }
+        } else {
+            ForEach(Array(results.enumerated()), id: \.element.id) { index, result in
+                Section("\(index == 0 ? "A" : "B") · \(names[index])") {
+                    answer(result)
+                }
             }
         }
 
@@ -45,6 +62,12 @@ struct CompareResultsView: View {
                 }
             }
         }
+    }
+
+    private func answer(_ result: ModelComparison) -> some View {
+        Text(result.answer.isEmpty ? "…" : result.answer)
+            .textSelection(.enabled)
+            .foregroundStyle(result.answer.isEmpty ? .secondary : .primary)
     }
 
     private func metric(_ title: String, _ value: (ModelComparison) -> String?) -> CompareMetricRow {

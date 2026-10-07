@@ -35,6 +35,8 @@ struct ChatView: View {
                 )
             }
             .animation(.smooth, value: viewModel.status)
+            // The same column as the messages on wide screens.
+            .frame(maxWidth: 760)
         }
         .navigationTitle(viewModel.conversation.title)
         .navigationSubtitle(viewModel.statusText)

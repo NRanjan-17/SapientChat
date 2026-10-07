@@ -30,6 +30,7 @@ struct ChatListView: View {
                 )
             }
         }
+        .readableContentWidth(720)
         .navigationTitle("Chats")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

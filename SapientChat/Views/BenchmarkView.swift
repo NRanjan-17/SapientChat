@@ -7,6 +7,10 @@ struct BenchmarkView: View {
     let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
 
     var body: some View {
+        form.readableContentWidth(720)
+    }
+
+    private var form: some View {
         Form {
             Section {
                 if viewModel.availableModels.isEmpty {

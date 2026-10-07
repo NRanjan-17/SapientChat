@@ -21,6 +21,8 @@ struct RootView: View {
                 SettingsTab(server: viewModel.server)
             }
         }
+        // A sidebar on iPad (collapsible), the tab bar on iPhone.
+        .tabViewStyle(.sidebarAdaptable)
         // An overlay, not a safe-area inset: an inset on the TabView pushes
         // every tab's navigation bar down even while the banner is empty.
         .overlay(alignment: .top) {

@@ -24,6 +24,7 @@ struct RequestLogView: View {
                 )
             }
         }
+        .readableContentWidth(760)
         .navigationTitle("Request Log")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

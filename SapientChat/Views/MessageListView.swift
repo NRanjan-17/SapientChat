@@ -38,6 +38,7 @@ struct MessageListView: View {
             .padding()
             .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.8), value: messages.count)
         }
+        .readableContentWidth(760)
         .defaultScrollAnchor(.bottom)
         .defaultScrollAnchor(.bottom, for: .sizeChanges)
         .scrollDismissesKeyboard(.interactively)

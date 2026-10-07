@@ -84,6 +84,7 @@ struct RequestDetailView: View {
                 }
             }
         }
+        .readableContentWidth(760)
         .navigationTitle(entry.path)
         .navigationBarTitleDisplayMode(.inline)
     }

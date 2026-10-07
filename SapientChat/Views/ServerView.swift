@@ -96,6 +96,7 @@ struct ServerView: View {
                 + "Models run on the CPU (iOS doesn't allow GPU work in the background), so models in memory are released now. "
                 + "iOS may still close the app if memory runs low. Not available in App Store builds.")
         }
+        .readableContentWidth(760)
         .navigationTitle("Endpoints & Access")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {

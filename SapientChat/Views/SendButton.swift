@@ -38,6 +38,9 @@ struct SendButton: View {
                 .scaleEffect(isEnabled || reduceMotion ? 1 : 0.88)
         }
         .buttonStyle(PressableButtonStyle())
+        // ⌘Return sends from a hardware keyboard (Return adds a line);
+        // ⌘. stops, from the Chat menu.
+        .keyboardShortcut(.return, modifiers: .command)
         .frame(minWidth: 44, minHeight: 44)
         .disabled(!isEnabled)
         .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.6), value: isEnabled)

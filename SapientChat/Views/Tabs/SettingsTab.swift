@@ -49,6 +49,7 @@ struct SettingsTab: View {
 
                 AboutSection()
             }
+            .readableContentWidth(720)
             .navigationTitle("Settings")
         }
     }

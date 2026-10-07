@@ -45,5 +45,6 @@ struct SapientChatApp: App {
             }
         }
         .modelContainer(container)
+        .commands { AppCommands(viewModel: viewModel) }
     }
 }

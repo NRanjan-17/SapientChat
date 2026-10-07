@@ -69,6 +69,7 @@ struct ModelManagerView: View {
                 ModelManagerSection(title: "Downloaded", rows: viewModel.downloadedRows, actions: actions)
                 ModelManagerSection(title: "Not downloaded", rows: viewModel.notDownloadedRows, actions: actions)
             }
+            .readableContentWidth(760)
             .navigationTitle("Models")
             .sheet(item: $contextWindowRow) { row in
                 ContextWindowSheet(

@@ -7,6 +7,10 @@ struct CompareView: View {
     let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
 
     var body: some View {
+        form.readableContentWidth(960)
+    }
+
+    private var form: some View {
         Form {
             Section {
                 ModelPickerField(title: "Model A", selection: viewModel.modelA, makeSelector: makeSelector, onSelect: viewModel.selectModelA)

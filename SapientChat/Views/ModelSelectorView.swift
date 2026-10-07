@@ -38,6 +38,7 @@ struct ModelSelectorView: View {
                 }
             }
             .searchable(text: $viewModel.searchText, prompt: "Search models")
+            .readableContentWidth(720)
             .navigationTitle(viewModel.canSelect ? "Choose Model" : "Downloaded Models")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

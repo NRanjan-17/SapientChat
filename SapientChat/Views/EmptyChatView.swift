@@ -28,6 +28,7 @@ struct EmptyChatView: View {
             }
             .padding(.vertical)
         }
+        .readableContentWidth(640)
     }
 }
 
