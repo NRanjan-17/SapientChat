@@ -2,7 +2,7 @@ import Foundation
 import Sapient
 
 /// `ChatService` and `BenchmarkService` backed by on-device SAPIENT
-/// sessions. Holds up to two models (least recently used released first),
+/// sessions. Holds up to four models (least recently used released first),
 /// shared by chats, benchmarks and comparisons.
 ///
 /// Uses SAPIENT's async exports, which run inference on the engine's own
@@ -24,7 +24,7 @@ actor SapientChatService: ChatService {
             return session.backendLabel()
         }
         await generation?.value
-        // Free a slot BEFORE loading, so three models never coexist.
+        // Free a slot BEFORE loading, so the slots are never exceeded, even briefly.
         if slots.models.count >= slots.capacity, let leastRecent = slots.models.last {
             slots.remove(leastRecent)
         }

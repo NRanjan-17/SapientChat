@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// What's in memory now: loaded models (of two slots), memory used, and
+/// What's in memory now: loaded models (of four slots), memory used, and
 /// what iOS still allows.
 struct MemorySummarySection: View {
     let loaded: [String]

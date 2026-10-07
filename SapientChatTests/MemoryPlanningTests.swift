@@ -3,15 +3,17 @@ import Testing
 @testable import SapientChat
 
 struct LoadedSlotsTests {
-    @Test func keepsTwoAndReleasesTheLeastRecentlyUsed() {
+    @Test func keepsFourAndReleasesTheLeastRecentlyUsed() {
         var slots = LoadedSlots<Int>()
-        #expect(slots.insert("a", session: 1).isEmpty)
-        #expect(slots.insert("b", session: 2).isEmpty)
-        #expect(slots.models == ["b", "a"])
+        #expect(slots.capacity == 4)
+        for (index, model) in ["a", "b", "c", "d"].enumerated() {
+            #expect(slots.insert(model, session: index).isEmpty)
+        }
+        #expect(slots.models == ["d", "c", "b", "a"])
         // Using "a" makes "b" the least recently used.
-        #expect(slots.use("a") == 1)
-        #expect(slots.insert("c", session: 3) == ["b"])
-        #expect(slots.models == ["c", "a"])
+        #expect(slots.use("a") == 0)
+        #expect(slots.insert("e", session: 4) == ["b"])
+        #expect(slots.models == ["e", "a", "d", "c"])
     }
 
     @Test func reinsertingDoesNotDuplicate() {
@@ -48,7 +50,7 @@ struct MemoryPlannerTests {
 
     @Test func aFullSetReleasesTheLeastRecentlyUsed() {
         let loaded: [(alias: String, model: PhoneModel?)] = [(medium.alias, medium), (small.alias, small)]
-        let plan = MemoryPlanner.plan(loading: big, loaded: loaded, availableBytes: 10_000_000_000)
+        let plan = MemoryPlanner.plan(loading: big, loaded: loaded, availableBytes: 10_000_000_000, capacity: 2)
         #expect(plan == .load(releasing: [small.alias]), "two slots: small was used least recently")
     }
 
@@ -64,6 +66,7 @@ struct MemoryPlannerTests {
     @Test func withNoKnownLimitOnlyCapacityMatters() {
         #expect(MemoryPlanner.plan(loading: big, loaded: [(small.alias, small)], availableBytes: nil) == .load(releasing: []))
         let full: [(alias: String, model: PhoneModel?)] = [(medium.alias, medium), (small.alias, small)]
-        #expect(MemoryPlanner.plan(loading: big, loaded: full, availableBytes: nil) == .load(releasing: [small.alias]))
+        #expect(MemoryPlanner.plan(loading: big, loaded: full, availableBytes: nil, capacity: 2) == .load(releasing: [small.alias]))
+        #expect(MemoryPlanner.plan(loading: big, loaded: full, availableBytes: nil) == .load(releasing: []), "four slots by default")
     }
 }

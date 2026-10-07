@@ -1,5 +1,5 @@
 /// Runs chat models. The only layer that talks to the inference engine.
-/// Keeps up to `LoadedSlots.defaultCapacity` (2) models in memory.
+/// Keeps up to `LoadedSlots.defaultCapacity` (4) models in memory.
 nonisolated protocol ChatService: Sendable {
     /// Loads `model` (downloading on first use) and marks it most recently
     /// used. Already loaded: just marks it. With both slots full, the least

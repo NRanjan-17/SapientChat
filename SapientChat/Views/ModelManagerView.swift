@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Download models ahead of time, load up to two into memory, unload,
+/// Download models ahead of time, load up to four into memory, unload,
 /// delete, and start a chat with a model that's already loaded.
 struct ModelManagerView: View {
     @Bindable var viewModel: ModelManagerViewModel

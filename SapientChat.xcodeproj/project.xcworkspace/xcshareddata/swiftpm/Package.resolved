@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/openhorizon-labs/sapient-swift",
       "state" : {
-        "revision" : "cc59fd8d20383109e7c022e8596f066bf760c598",
-        "version" : "0.6.6"
+        "branch" : "main",
+        "revision" : "cc59fd8d20383109e7c022e8596f066bf760c598"
       }
     }
   ],

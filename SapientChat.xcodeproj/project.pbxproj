@@ -190,7 +190,7 @@
 			mainGroup = E23B08AF307006CA00D68255;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				E23B08E1307006CB00D68255 /* XCRemoteSwiftPackageReference "sapient-swift" */,
+				E25631823076209B00B0B859 /* XCRemoteSwiftPackageReference "sapient-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E23B08B9307006CA00D68255 /* Products */;
@@ -380,11 +380,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SapientChat.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 667V7CCT79;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SapientChat-Info.plist";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "SapientChat serves its on-device models to other devices on your network when you turn on the API server.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -412,11 +415,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SapientChat.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 667V7CCT79;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "SapientChat-Info.plist";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "SapientChat serves its on-device models to other devices on your network when you turn on the API server.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -561,12 +567,12 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		E23B08E1307006CB00D68255 /* XCRemoteSwiftPackageReference "sapient-swift" */ = {
+		E25631823076209B00B0B859 /* XCRemoteSwiftPackageReference "sapient-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/openhorizon-labs/sapient-swift";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.6.6;
+				branch = main;
+				kind = branch;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -574,7 +580,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		E23B08E2307006CB00D68255 /* Sapient */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E23B08E1307006CB00D68255 /* XCRemoteSwiftPackageReference "sapient-swift" */;
+			package = E25631823076209B00B0B859 /* XCRemoteSwiftPackageReference "sapient-swift" */;
 			productName = Sapient;
 		};
 /* End XCSwiftPackageProductDependency section */

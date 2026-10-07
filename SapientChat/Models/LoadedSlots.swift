@@ -3,7 +3,7 @@
 /// unit-testable; `SapientChatService` stores its sessions in one.
 nonisolated struct LoadedSlots<Session> {
     /// At most this many models stay loaded together.
-    static var defaultCapacity: Int { 2 }
+    static var defaultCapacity: Int { 4 }
 
     let capacity: Int
     private(set) var entries: [(model: String, session: Session)] = []

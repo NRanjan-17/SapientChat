@@ -2,7 +2,7 @@ import Foundation
 
 /// Gets a model ready to use, shared by chat, the model manager and
 /// compare: plans memory (releasing least recently used models so the new
-/// one fits, keeping two together when they do), downloads it if its files
+/// one fits, keeping up to four together when they do), downloads it if its files
 /// aren't complete, then loads it. Reports each phase as it starts.
 struct ModelPreparer {
     let services: AppServices

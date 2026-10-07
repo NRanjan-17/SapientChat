@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// The model manager: download models ahead of time, load them into
-/// memory (up to two at once), unload, delete, and start a chat with a
+/// memory (up to four at once), unload, delete, and start a chat with a
 /// model that is already loaded.
 @Observable
 final class ModelManagerViewModel: Identifiable {
@@ -76,7 +76,7 @@ final class ModelManagerViewModel: Identifiable {
     }
 
     /// Downloads if needed and loads into memory (releasing the least
-    /// recently used model if both slots are taken or memory is short).
+    /// recently used model if every slot is taken or memory is short).
     func load(_ row: Row) {
         let alias = row.model.alias
         run(alias) { [self] in
