@@ -46,6 +46,12 @@ struct RootView: View {
 
     private func restoreTab() {
         viewModel.selectedTab = storedTab
+        #if DEBUG
+        // Screenshots and UI checks: `-SapientTab benchmark` opens that tab.
+        if let name = UserDefaults.standard.string(forKey: "SapientTab"), let tab = AppTab(rawValue: name) {
+            viewModel.selectedTab = tab
+        }
+        #endif
     }
 
     private func handleScenePhase(_ phase: ScenePhase) {

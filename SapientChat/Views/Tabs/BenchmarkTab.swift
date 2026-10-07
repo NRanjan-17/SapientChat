@@ -6,6 +6,7 @@ struct BenchmarkTab: View {
     let compare: CompareViewModel
     let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
     @SceneStorage("benchmarkMode") private var mode = BenchmarkMode.single
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var isRunning: Bool { benchmark.isRunning || compare.isRunning }
 
@@ -25,6 +26,19 @@ struct BenchmarkTab: View {
             }
             .navigationTitle("Benchmark")
             .toolbarTitleDisplayMode(.inlineLarge)
+            // The two-form layout isn't one scroll view, and iPad then drew
+            // no title at all (and the bar's row is shared with the tabs):
+            // a large heading at the top left of the page, like Chats.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if horizontalSizeClass == .regular {
+                    Text("Benchmark")
+                        .font(.largeTitle.bold())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 4)
+                        .accessibilityAddTraits(.isHeader)
+                }
+            }
         }
     }
 }
