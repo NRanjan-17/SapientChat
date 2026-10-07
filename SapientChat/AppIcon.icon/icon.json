@@ -5,33 +5,11 @@
       "display-p3:0.01961,0.34510,0.85882,1.00000"
     ]
   },
-  "fill-specializations" : [
-    {
-      "appearance" : "dark",
-      "value" : {
-        "linear-gradient" : [
-          "display-p3:0.07059,0.07059,0.07059,1.00000",
-          "display-p3:0.03922,0.03922,0.03922,1.00000"
-        ]
-      }
-    }
-  ],
   "groups" : [
     {
       "layers" : [
         {
           "fill" : "automatic",
-          "fill-specializations" : [
-            {
-              "appearance" : "dark",
-              "value" : {
-                "linear-gradient" : [
-                  "display-p3:0.16471,0.49020,1.00000,1.00000",
-                  "display-p3:0.01961,0.38431,0.93725,1.00000"
-                ]
-              }
-            }
-          ],
           "glass" : true,
           "image-name" : "Mark.svg",
           "name" : "SAPIENT mark"
@@ -44,7 +22,7 @@
       },
       "translucency" : {
         "enabled" : false,
-        "value" : 0.20000000000000001
+        "value" : 0.2
       }
     }
   ],
