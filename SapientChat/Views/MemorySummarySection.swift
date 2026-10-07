@@ -6,6 +6,7 @@ struct MemorySummarySection: View {
     let loaded: [String]
     let capacity: Int
     let memory: MemoryStatus
+    var onUnloadAll: (() -> Void)?
 
     var body: some View {
         Section {
@@ -52,6 +53,12 @@ struct MemorySummarySection: View {
                 }
                 if !loaded.isEmpty {
                     FlowChips(items: loaded)
+                }
+                if let onUnloadAll {
+                    Button("Unload All Models", systemImage: "eject", role: .destructive, action: onUnloadAll)
+                        .font(.subheadline)
+                        .buttonStyle(.borderless)
+                        .disabled(loaded.isEmpty)
                 }
             }
             .padding(.vertical, 6)

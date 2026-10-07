@@ -152,13 +152,17 @@ final class ChatViewModel {
             // letting iOS kill the app), downloads on first use, loads.
             let prepareStart = ContinuousClock.now
             var hadToLoad = false
-            backendLabel = try await ModelPreparer(services: services, device: device).prepare(modelAlias) { phase in
+            backendLabel = try await ModelPreparer(services: services, device: device).prepare(modelAlias) { [self] phase in
                 hadToLoad = true
-                if island == nil {
-                    island = LiveActivityTracker(service: services.liveActivities, title: "Chat")
-                    island?.start(model: name)
+                // Downloads have the coordinator's Dynamic Island (it keeps
+                // going if you leave the chat); loading gets the chat's.
+                if case .loading = phase {
+                    if island == nil {
+                        island = LiveActivityTracker(service: services.liveActivities, title: "Chat")
+                        island?.start(model: name)
+                    }
+                    island?.phase(phase)
                 }
-                island?.phase(phase)
                 guard currentReplyID == reply.id else { return }
                 status = switch phase {
                 case .downloading(let progress): .downloading(model: name, progress: progress)

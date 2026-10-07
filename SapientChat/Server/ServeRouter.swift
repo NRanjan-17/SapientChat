@@ -202,12 +202,11 @@ final class ServeRouter {
         activity?.start(model: model.displayName)
         capture.model(model.alias)
         let stream = (try? APIJSON.decoder.decode(ModelActionRequest.self, from: request.body))?.stream ?? false
-        let downloads = services.downloads
         let alias = model.alias
         guard stream else {
             defer { onModelPhase?(alias, nil) }
             do {
-                try await ModelPreparer(services: services, device: device).download(alias) { phase in
+                try await ModelPreparer(services: services, device: device, showsDownloadIsland: false).download(alias) { [self] phase in
                     activity?.phase(phase)
                     onModelPhase?(alias, phase)
                 }
@@ -220,22 +219,21 @@ final class ServeRouter {
         }
         let (events, continuation) = AsyncThrowingStream<DownloadEvent, any Error>.makeStream()
         let reportPhase = onModelPhase
+        let coordinator = services.downloadCoordinator
         let task = Task {
             do {
-                // Progress arrives on the engine's thread.
-                let latest = Mutex(DownloadProgress.starting)
-                try await downloads.download(model: alias) { progress in
-                    latest.withLock { $0 = progress }
-                    Task { @MainActor in
-                        activity?.phase(.downloading(progress))
-                        reportPhase?(alias, .downloading(progress))
-                    }
+                // Through the shared coordinator: joins a download the app
+                // already has running; the client hanging up stops only this.
+                var last = DownloadProgress.starting
+                try await coordinator.download(alias, showsIsland: false) { progress in
+                    last = progress
+                    activity?.phase(.downloading(progress))
+                    reportPhase?(alias, .downloading(progress))
                     continuation.yield(DownloadEvent(
                         model: alias, status: "downloading",
                         downloadedBytes: progress.downloadedBytes, totalBytes: progress.totalBytes
                     ))
                 }
-                let last = latest.withLock { $0 }
                 continuation.yield(DownloadEvent(
                     model: alias, status: "downloaded",
                     downloadedBytes: max(last.downloadedBytes, last.totalBytes), totalBytes: last.totalBytes
@@ -246,8 +244,7 @@ final class ServeRouter {
                 activity?.fail(Self.describe(error))
                 continuation.finish(throwing: error)
             }
-            // After the last progress hop, so the row doesn't reappear.
-            Task { @MainActor in reportPhase?(alias, nil) }
+            reportPhase?(alias, nil)
         }
         continuation.onTermination = { _ in task.cancel() }
         return eventStream(events) { event in
@@ -550,7 +547,7 @@ final class ServeRouter {
         let alias = model.alias
         defer { onModelPhase?(alias, nil) }
         do {
-            let backend = try await ModelPreparer(services: services, device: device).prepare(alias) { phase in
+            let backend = try await ModelPreparer(services: services, device: device, showsDownloadIsland: false).prepare(alias) { [self] phase in
                 activity?.phase(phase)
                 onModelPhase?(alias, phase)
             }

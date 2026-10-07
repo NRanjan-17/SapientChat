@@ -7,6 +7,7 @@ struct ModelManagerView: View {
     @State private var pendingDelete: ModelManagerViewModel.Row?
     @State private var isConfirmingDelete = false
     @State private var isConfirmingDeleteAll = false
+    @State private var isConfirmingUnloadAll = false
     @State private var contextWindowRow: ModelManagerViewModel.Row?
 
     var body: some View {
@@ -15,7 +16,8 @@ struct ModelManagerView: View {
                 MemorySummarySection(
                     loaded: viewModel.loaded.map(viewModel.displayName(of:)),
                     capacity: viewModel.capacity,
-                    memory: viewModel.device.memory
+                    memory: viewModel.device.memory,
+                    onUnloadAll: { isConfirmingUnloadAll = true }
                 )
                 Section {
                     LabeledContent {
@@ -95,6 +97,15 @@ struct ModelManagerView: View {
             }
             .task { await viewModel.refresh() }
             .refreshable { await viewModel.refresh() }
+            .confirmationDialog(
+                "Unload \(viewModel.loaded.count == 1 ? "1 model" : "\(viewModel.loaded.count) models") from memory?",
+                isPresented: $isConfirmingUnloadAll,
+                titleVisibility: .visible
+            ) {
+                Button("Unload All", role: .destructive) { Task { await viewModel.unloadAll() } }
+            } message: {
+                Text("They stay downloaded and load again when used. A reply or benchmark that's running stops.")
+            }
             .confirmationDialog(deleteTitle, isPresented: $isConfirmingDelete, titleVisibility: .visible) {
                 Button("Delete", role: .destructive, action: deletePending)
             }

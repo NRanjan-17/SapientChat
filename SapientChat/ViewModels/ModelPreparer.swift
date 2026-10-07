@@ -7,10 +7,12 @@ import Foundation
 struct ModelPreparer {
     let services: AppServices
     let device: DeviceStatus
+    /// Show downloads in the Dynamic Island (API requests show their own).
+    var showsDownloadIsland = true
 
     /// Ready `alias` and return the hardware label. Throws
     /// `ChatViewModelError.wontFit` before touching anything if it can't fit.
-    func prepare(_ alias: String, onPhase: (ModelPhase) -> Void) async throws -> String {
+    func prepare(_ alias: String, onPhase: @escaping (ModelPhase) -> Void) async throws -> String {
         let catalog = services.catalog.chatModels()
         let model = catalog.first { $0.alias == alias }
         let loaded = await services.chat.loadedModels()
@@ -44,25 +46,13 @@ struct ModelPreparer {
         return backend
     }
 
-    /// Downloads `alias`, reporting progress in order on the main actor.
-    func download(_ alias: String, onPhase: (ModelPhase) -> Void) async throws {
+    /// Downloads `alias` through the app's shared `DownloadCoordinator`, so
+    /// a download someone else started is joined, and cancelling this call
+    /// stops only this caller, not the download.
+    func download(_ alias: String, onPhase: @escaping (ModelPhase) -> Void) async throws {
         onPhase(.downloading(.starting))
-        let (updates, sink) = AsyncStream<DownloadProgress>.makeStream()
-        let downloads = services.downloads
-        let task = Task {
-            defer { sink.finish() }
-            try await downloads.download(model: alias) { sink.yield($0) }
-        }
-        try await withTaskCancellationHandler {
-            var meter = DownloadSpeedMeter()
-            for await update in updates {
-                var progress = update
-                progress.bytesPerSecond = meter.record(update.downloadedBytes)
-                onPhase(.downloading(progress))
-            }
-            try await task.value
-        } onCancel: {
-            task.cancel()
+        try await services.downloadCoordinator.download(alias, showsIsland: showsDownloadIsland) { progress in
+            onPhase(.downloading(progress))
         }
     }
 }

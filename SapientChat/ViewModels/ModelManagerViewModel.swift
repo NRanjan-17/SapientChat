@@ -90,7 +90,7 @@ final class ModelManagerViewModel: Identifiable {
     func download(_ row: Row) {
         let alias = row.model.alias
         run(alias, done: "Downloaded") { [self] in
-            try await ModelPreparer(services: services, device: device).download(alias) { phase in
+            try await ModelPreparer(services: services, device: device).download(alias) { [self] phase in
                 if case .downloading(let progress) = phase { setActivity(.downloading(progress), for: alias) }
             }
         }
@@ -132,8 +132,32 @@ final class ModelManagerViewModel: Identifiable {
         }
     }
 
+    /// Stops the model's download for everyone (a chat waiting on it too),
+    /// or its load.
     func cancel(_ row: Row) {
+        services.downloadCoordinator.cancel(row.model.alias)
         tasks[row.model.alias]?.cancel()
+    }
+
+    /// Runs before Unload All: stops replies and benchmarks using the models.
+    @ObservationIgnored var beforeUnloadAll: () -> Void = {}
+
+    /// Releases every model from memory; they stay downloaded.
+    func unloadAll() async {
+        beforeUnloadAll()
+        await services.chat.unloadAll()
+        await refresh()
+    }
+
+    /// Any download in the app (a chat's, an API request's, this tab's),
+    /// shown on its row; nil when it ends.
+    func downloadChanged(_ progress: DownloadProgress?, for alias: String) {
+        if let progress {
+            setActivity(.downloading(progress), for: alias, showsIsland: false)
+        } else if tasks[alias] == nil {
+            activities[alias] = nil
+            Task { await refresh() }
+        }
     }
 
     func unload(_ row: Row) async {
@@ -169,7 +193,7 @@ final class ModelManagerViewModel: Identifiable {
         let before = await services.chat.loadedModels()
         device.refreshMemory()
         let available = device.memory.availableBytes
-        let backend = try await ModelPreparer(services: services, device: device).prepare(alias) { phase in
+        let backend = try await ModelPreparer(services: services, device: device).prepare(alias) { [self] phase in
             switch phase {
             case .downloading(let progress): setActivity(.downloading(progress), for: alias)
             case .loading: setActivity(.loading, for: alias)
@@ -243,12 +267,9 @@ final class ModelManagerViewModel: Identifiable {
 
     private func setActivity(_ activity: Activity, for alias: String, showsIsland: Bool = true) {
         activities[alias] = activity
-        if showsIsland {
-            let phase: ModelPhase = switch activity {
-            case .downloading(let progress): .downloading(progress)
-            case .loading: .loading
-            }
-            island(for: alias).phase(phase)
+        // Downloads have the coordinator's Dynamic Island; loads get this tab's.
+        if showsIsland, case .loading = activity {
+            island(for: alias).phase(.loading)
         }
         rows = rows.map { row in
             guard row.model.alias == alias else { return row }

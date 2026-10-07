@@ -113,7 +113,7 @@ final class CompareViewModel: Identifiable {
         let activity = LiveActivityTracker(service: liveActivities, title: "Compare · model \(index + 1) of 2")
         activity.start(model: name)
         self.activity = activity
-        _ = try await ModelPreparer(services: services, device: device).prepare(alias) { step in
+        _ = try await ModelPreparer(services: services, device: device).prepare(alias) { [self] step in
             activity.phase(step)
             phase = switch step {
             case .downloading(let progress): .running("Downloading \(name) · \(progress.text)")
