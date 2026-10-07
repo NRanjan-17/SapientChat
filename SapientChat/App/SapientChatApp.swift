@@ -12,6 +12,8 @@ import SwiftUI
 struct SapientChatApp: App {
     private let container: ModelContainer
     @State private var viewModel: ChatListViewModel
+    /// The animated SAPIENT splash, once per launch.
+    @State private var showsSplash = true
 
     init() {
         // Chats are stored on this device only (no CloudKit).
@@ -34,7 +36,12 @@ struct SapientChatApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(viewModel: viewModel)
+            ZStack {
+                RootView(viewModel: viewModel)
+                if showsSplash {
+                    SplashView { showsSplash = false }
+                }
+            }
         }
         .modelContainer(container)
     }
