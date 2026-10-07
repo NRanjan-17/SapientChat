@@ -1,0 +1,15 @@
+{
+  "originHash" : "3012ddb5e147b17820aaae873df06110ed56955af1a6ebcd4627ce1af0d26d01",
+  "pins" : [
+    {
+      "identity" : "sapient-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/openhorizon-labs/sapient-swift",
+      "state" : {
+        "revision" : "cc59fd8d20383109e7c022e8596f066bf760c598",
+        "version" : "0.6.6"
+      }
+    }
+  ],
+  "version" : 3
+}
