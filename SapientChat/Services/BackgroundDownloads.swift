@@ -37,21 +37,35 @@ final class ContinuedProcessingDownloads: BackgroundDownloadScheduler {
     private var pending: [String: Work] = [:]
     private var briefHold: UIBackgroundTaskIdentifier = .invalid
     private let log = Logger(subsystem: "SapientChat", category: "BackgroundDownload")
+    /// Whether iOS accepted the launch handler. Submitting without one
+    /// isn't an error iOS returns: it aborts the app.
+    private var isRegistered = false
+
+    /// A task identifier iOS matches against `<prefix>.*`: the part after the
+    /// prefix must be one segment, so letters and digits only. (A model name
+    /// like "qwen2.5-0.5b" has dots; an identifier built from it matched
+    /// nothing and iOS ended the app.)
+    static func identifier(for model: String) -> String {
+        identifierPrefix + "." + UUID().uuidString.filter { $0.isLetter || $0.isNumber }
+    }
 
     /// Registers the launch handler. Call once, while the app launches.
     init() {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.identifierPrefix + ".*", using: .main) { [weak self] task in
+        isRegistered = BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.identifierPrefix + ".*", using: .main) { [weak self] task in
             guard let task = task as? BGContinuedProcessingTask else {
                 task.setTaskCompleted(success: false)
                 return
             }
             MainActor.assumeIsolated { self?.started(task) }
         }
+        if !isRegistered {
+            log.error("Couldn't register \(Self.identifierPrefix, privacy: .public).*; downloads won't get background time")
+        }
     }
 
     func begin(model: String, title: String) -> (any BackgroundDownload)? {
-        let suffix = model.replacing("/", with: "-") + "-" + UUID().uuidString.prefix(6)
-        let identifier = Self.identifierPrefix + "." + suffix
+        guard isRegistered else { return nil }
+        let identifier = Self.identifier(for: model)
         let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: title, subtitle: "Starting…")
         // Fail rather than queue: a queued request might start after the
         // download is done; the brief hold and resume-on-return cover it.
@@ -106,8 +120,9 @@ final class ContinuedProcessingDownloads: BackgroundDownloadScheduler {
 
         func attach(_ task: BGContinuedProcessingTask) {
             self.task = task
+            // iOS calls this on a queue of its own: hop to the main actor.
             task.expirationHandler = { [weak self] in
-                MainActor.assumeIsolated { self?.onExpire?() }
+                Task { @MainActor in self?.onExpire?() }
             }
             if let result {
                 task.setTaskCompleted(success: result)

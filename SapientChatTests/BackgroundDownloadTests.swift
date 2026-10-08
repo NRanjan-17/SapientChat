@@ -123,3 +123,15 @@ struct BackgroundDownloadTests {
         #expect(activities.started.isEmpty)
     }
 }
+
+struct BackgroundTaskIdentifierTests {
+    @Test func identifiersAreOneSegmentAfterThePrefix() {
+        for model in ["openhorizon/qwen2.5-0.5b-q4", "openhorizon/smollm2-135m-q4", "openhorizon/deepseek-r1-1.5b"] {
+            let identifier = ContinuedProcessingDownloads.identifier(for: model)
+            #expect(identifier.hasPrefix(ContinuedProcessingDownloads.identifierPrefix + "."))
+            let suffix = identifier.dropFirst(ContinuedProcessingDownloads.identifierPrefix.count + 1)
+            #expect(!suffix.isEmpty)
+            #expect(suffix.allSatisfy { $0.isLetter || $0.isNumber }, "\(identifier)")
+        }
+    }
+}
