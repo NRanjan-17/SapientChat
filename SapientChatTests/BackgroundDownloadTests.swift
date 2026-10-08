@@ -133,12 +133,12 @@ struct BackgroundDownloadTests {
         #expect(scheduler.begun.count == 1, "one task for both")
         let work = try #require(scheduler.works.first)
         #expect(work.titles.contains("Downloading 2 models"))
-        #expect(work.subtitles.contains { $0.contains(TestModels.small.displayName) && $0.contains(TestModels.big.displayName) })
+        #expect(work.subtitles.allSatisfy { !$0.contains(TestModels.small.displayName) }, "no per-model list")
         #expect(work.updates.last.map { $0.0 == $0.1 } == true, "ends complete")
         #expect(work.result == true)
     }
 
-    @Test func whenIOSRefusesOneActivityListsEveryDownload() async throws {
+    @Test func whenIOSRefusesOneActivityShowsTheCombinedDownloads() async throws {
         let scheduler = FakeBackgroundScheduler()
         scheduler.refuses = true
         let activities = RecordingLiveActivities()
@@ -149,8 +149,8 @@ struct BackgroundDownloadTests {
         async let big: Void = coordinator.download(TestModels.big.alias) { _ in }
         _ = try await (small, big)
         #expect(activities.started.count == 1, "one activity, not one per download")
-        let listed = (activities.startStates + activities.updates).map { Set($0.downloads.map(\.name)) }
-        #expect(listed.contains([TestModels.small.displayName, TestModels.big.displayName]))
+        let states = activities.startStates + activities.updates
+        #expect(states.contains { $0.downloadCount == 2 && $0.detail == "2 models" })
         #expect(activities.ended.last?.phase == .finished)
     }
 
@@ -174,5 +174,24 @@ struct BackgroundTaskIdentifierTests {
             #expect(suffix.allSatisfy { $0.isLetter || $0.isNumber }, "\(identifier)")
         }
         #expect(Set(identifiers).count == identifiers.count)
+    }
+}
+
+@MainActor
+struct DownloadsLiveActivityTests {
+    @Test func showsTheCountCombinedProgressAndSpeed() {
+        let service = RecordingLiveActivities()
+        let activity = DownloadsLiveActivity(service: service, minimumInterval: 0)
+        activity.show(names: ["qwen2.5-1.5b"], progress: 0.2, bytesPerSecond: 4_000_000)
+        #expect(service.startStates.first?.detail == "qwen2.5-1.5b")
+        activity.show(names: ["qwen2.5-1.5b", "smollm2-1.7b"], progress: 0.3, bytesPerSecond: 9_000_000)
+        let state = try! #require(service.updates.last)
+        #expect(state.downloadCount == 2)
+        #expect(state.detail == "2 models")
+        #expect(state.progress == 0.3)
+        #expect(state.bytesPerSecond == 9_000_000)
+        activity.finish(failures: [])
+        #expect(service.ended.last?.phase == .finished)
+        #expect(service.ended.last?.downloadCount == 0)
     }
 }

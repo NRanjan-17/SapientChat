@@ -23,8 +23,10 @@ nonisolated struct SapientActivityAttributes: ActivityAttributes {
         var tokens: Int = 0
         /// Requests the server has answered since it started (server activity only).
         var requests: Int = 0
-        /// Every model downloading right now (downloads activity only).
-        var downloads: [DownloadItem] = []
+        /// How many models are downloading (downloads activity only).
+        var downloadCount: Int = 0
+        /// Combined download speed, bytes per second; nil until measured.
+        var bytesPerSecond: Double?
         var tokensPerSecond: Double?
         var timeToFirstTokenMs: Int?
         var startedAt: Date
@@ -32,13 +34,6 @@ nonisolated struct SapientActivityAttributes: ActivityAttributes {
         var endedAt: Date?
 
         var isOver: Bool { phase == .finished || phase == .failed }
-    }
-
-    /// One model in the downloads activity.
-    nonisolated struct DownloadItem: Codable, Hashable, Sendable {
-        var name: String
-        /// 0…1; nil until its size is known.
-        var progress: Double?
     }
 
     /// Who asked: "Request from Shortcuts", "API request", "Benchmark".

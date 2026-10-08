@@ -3,13 +3,13 @@
 
 import Foundation
 
-/// One Live Activity for all model downloads, listing each model with its
-/// progress. The Dynamic Island shows one activity at a time, so one per
-/// download hid all but one of them. Shown when iOS isn't already showing
-/// the downloads' progress itself (its continued processing task).
+/// One Live Activity for all model downloads: how many, their combined
+/// progress and download speed (no per-model list). The Dynamic Island
+/// shows one activity at a time, so one per download hid all but one.
+/// Shown when iOS isn't already showing the downloads' progress itself
+/// (its continued processing task).
 final class DownloadsLiveActivity {
     typealias State = SapientActivityAttributes.ContentState
-    typealias Item = SapientActivityAttributes.DownloadItem
 
     private let service: any LiveActivityService
     private let minimumInterval: TimeInterval
@@ -27,14 +27,16 @@ final class DownloadsLiveActivity {
 
     var isActive: Bool { id != nil }
 
-    /// Shows `items` (starting the activity if needed). A model joining or
-    /// leaving is sent at once; progress at most about once a second.
-    func show(_ items: [Item], progress: Double?) {
-        let listChanged = items.map(\.name) != state.downloads.map(\.name)
+    /// `names` are the models downloading (one name is shown; more show as
+    /// a count). The count changing is sent at once; progress and speed at
+    /// most about once a second.
+    func show(names: [String], progress: Double?, bytesPerSecond: Double?) {
+        let countChanged = names.count != state.downloadCount
         state.phase = .downloading
-        state.downloads = items
+        state.downloadCount = names.count
         state.progress = progress
-        state.detail = items.count == 1 ? items[0].name : "\(items.count) models"
+        state.bytesPerSecond = bytesPerSecond
+        state.detail = names.count == 1 ? names[0] : "\(names.count) models"
         let now = clock()
         guard let id else {
             state.startedAt = now
@@ -42,7 +44,7 @@ final class DownloadsLiveActivity {
             lastSent = now
             return
         }
-        guard listChanged || now.timeIntervalSince(lastSent) >= minimumInterval else { return }
+        guard countChanged || now.timeIntervalSince(lastSent) >= minimumInterval else { return }
         lastSent = now
         service.update(id, state: state)
     }
@@ -51,8 +53,9 @@ final class DownloadsLiveActivity {
     func finish(failures: [String]) {
         guard let id else { return }
         self.id = nil
-        state.downloads = []
+        state.downloadCount = 0
         state.progress = nil
+        state.bytesPerSecond = nil
         state.endedAt = clock()
         if failures.isEmpty {
             state.phase = .finished

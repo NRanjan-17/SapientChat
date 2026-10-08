@@ -40,7 +40,6 @@ struct SapientLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 8) {
                         PhaseLine(state: state, isStale: context.isStale)
-                        DownloadList(items: state.downloads)
                         StatsRow(state: state)
                     }
                 }
@@ -93,37 +92,7 @@ private struct LockScreenView: View {
                     .foregroundStyle(.secondary)
             }
             PhaseLine(state: state, isStale: isStale)
-            DownloadList(items: state.downloads)
             StatsRow(state: state)
-        }
-    }
-}
-
-/// Every model downloading, each with its own bar (downloads activity).
-private struct DownloadList: View {
-    let items: [SapientActivityAttributes.DownloadItem]
-
-    var body: some View {
-        if items.count > 1 {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(items, id: \.name) { item in
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text(item.name)
-                                .font(.caption.weight(.medium))
-                                .lineLimit(1)
-                            Spacer()
-                            if let progress = item.progress {
-                                Text(progress, format: .percent.precision(.fractionLength(0)))
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        ProgressView(value: item.progress ?? 0)
-                            .tint(.accentColor)
-                    }
-                }
-            }
         }
     }
 }
@@ -178,7 +147,15 @@ private struct StatsRow: View {
     let state: SapientActivityAttributes.ContentState
 
     var body: some View {
-        if state.phase == .serving {
+        if state.downloadCount > 0 {
+            // Downloads: how many and how fast; the bar above is combined.
+            tiles {
+                stat("\(state.downloadCount)", state.downloadCount == 1 ? "model" : "models")
+                if let speed = state.bytesPerSecond {
+                    stat(Int64(speed).formatted(.byteCount(style: .file)) + "/s", "speed")
+                }
+            }
+        } else if state.phase == .serving {
             tiles {
                 stat("\(state.requests)", state.requests == 1 ? "request" : "requests")
                 if let rate = state.tokensPerSecond {

@@ -215,20 +215,24 @@ final class DownloadCoordinator {
         }
         let downloaded = finishedBytes + active.reduce(0) { $0 + $1.value.progress.downloadedBytes }
         let total = finishedBytes + active.reduce(0) { $0 + $1.value.progress.totalBytes }
-        let items = active.map { alias, job in
-            SapientActivityAttributes.DownloadItem(name: name(of: alias), progress: job.progress.fraction)
-        }
-        let title = items.count == 1 ? "Downloading \(items[0].name)" : "Downloading \(items.count) models"
-        let subtitle = items.map { item in
-            item.progress.map { "\(item.name) \(Int(($0 * 100).rounded()))%" } ?? item.name
-        }.joined(separator: " · ")
+        let names = active.map { name(of: $0.key) }
+        let progress = total > 0 ? Double(downloaded) / Double(total) : nil
+        let speeds = active.compactMap(\.value.progress.bytesPerSecond)
+        let speed = speeds.isEmpty ? nil : speeds.reduce(0, +)
+        // How many, combined progress and speed; no per-model list.
+        let title = names.count == 1 ? "Downloading \(names[0])" : "Downloading \(names.count) models"
+        let subtitle = [
+            progress.map { "\(Int(($0 * 100).rounded()))%" },
+            total > 0 ? "\(Format.bytes(downloaded)) of \(Format.bytes(total))" : nil,
+            speed.map { "\(Format.bytes(UInt64($0)))/s" },
+        ].compactMap(\.self).joined(separator: " · ")
         sharedWork?.update(downloaded: downloaded, total: total, title: title, subtitle: subtitle)
 
         // iOS shows a continued processing task's progress itself.
         let wantsIsland = active.contains { $0.value.wantsIsland }
         if sharedWork == nil, wantsIsland {
             if island == nil { island = DownloadsLiveActivity(service: liveActivities) }
-            island?.show(items, progress: total > 0 ? Double(downloaded) / Double(total) : nil)
+            island?.show(names: names, progress: progress, bytesPerSecond: speed)
         }
     }
 
