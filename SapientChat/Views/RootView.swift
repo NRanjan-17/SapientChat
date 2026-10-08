@@ -55,12 +55,19 @@ struct RootView: View {
     }
 
     private func handleScenePhase(_ phase: ScenePhase) {
-        if phase == .active {
+        // Only real backgrounding counts as leaving. The app is briefly
+        // .inactive when iOS shows its own UI (Control Center, the
+        // background download progress); treating that as leaving stopped
+        // a new chat's first reply while its model was loading.
+        switch phase {
+        case .active:
             viewModel.appDidBecomeActive()
             viewModel.server.appDidBecomeActive()
-        } else {
+        case .background:
             viewModel.appDidLeaveForeground()
             viewModel.server.appDidLeaveForeground()
+        default:
+            break
         }
     }
 }

@@ -19,6 +19,8 @@ final class ChatViewModel {
     var draft = ""
 
     @ObservationIgnored private let services: AppServices
+    /// Leaving the app interrupted the prompt before the model was ready.
+    @ObservationIgnored private var resendsOnReturn = false
     @ObservationIgnored private let store: any ConversationStore
     /// Shared app-wide state (memory, thermal) owned by the chat list.
     @ObservationIgnored let device: DeviceStatus
@@ -131,7 +133,22 @@ final class ChatViewModel {
     /// iOS forbids GPU work in the background and gives background CPU only
     /// ~30 s, so generation stops when the app leaves the foreground.
     func appDidLeaveForeground() {
+        // Still getting the model ready: send the prompt again on return, so
+        // it isn't lost (the download itself carries on in the background).
+        if isBusy && !isGenerating { resendsOnReturn = true }
         stop()
+    }
+
+    /// Back in front: answer a prompt that leaving interrupted before the
+    /// model was ready.
+    func appDidBecomeActive() {
+        guard resendsOnReturn else { return }
+        resendsOnReturn = false
+        Task {
+            // Let the stopped turn finish unwinding first.
+            while isBusy { try? await Task.sleep(for: .milliseconds(50)) }
+            regenerate()
+        }
     }
 
     // MARK: Turn handling

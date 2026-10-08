@@ -116,6 +116,7 @@ final class ChatListViewModel {
     /// Back in front: resume any download iOS cut off.
     func appDidBecomeActive() {
         services.downloadCoordinator.appBecameActive()
+        activeChat?.appDidBecomeActive()
     }
 
     /// iOS forbids GPU work in the background: stop whatever is generating
