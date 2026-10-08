@@ -306,6 +306,12 @@ struct HandoffTests {
         #expect(body?["stream"] as? Bool == false)
     }
 
+    @Test func aQueryInThePathWorksAsOverHTTP() throws {
+        let handoff = try HandoffRequest(url: handoffURL(path: "/v1/catalog?status=downloaded", body: nil))
+        #expect(handoff.request.path == "/v1/catalog")
+        #expect(handoff.request.query["status"] == "downloaded")
+    }
+
     @Test func rejectsOtherURLs() {
         #expect(throws: HandoffRequest.ParseError.notAHandoff) { try HandoffRequest(url: URL(string: "sapient://chat")!) }
         #expect(throws: HandoffRequest.ParseError.missingPath) {

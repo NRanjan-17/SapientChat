@@ -63,9 +63,16 @@ nonisolated struct HandoffRequest: Sendable {
         if let key = query["key"], !key.isEmpty {
             headers["authorization"] = "Bearer \(key)"
         }
+        // A query in `path` (e.g. /v1/catalog?status=downloaded) works as over HTTP.
+        let target = URLComponents(string: path)
+        var requestQuery: [String: String] = [:]
+        for item in target?.queryItems ?? [] {
+            requestQuery[item.name] = item.value ?? ""
+        }
         request = HTTPRequest(
             method: query["method"]?.uppercased() ?? (body.isEmpty ? "GET" : "POST"),
-            path: path,
+            path: target?.path ?? path,
+            query: requestQuery,
             headers: headers,
             body: body
         )

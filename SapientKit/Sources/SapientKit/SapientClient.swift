@@ -66,9 +66,19 @@ public final class SapientClient: Sendable {
         try await get("/v1/health")
     }
 
+    /// Whether SapientChat answers, without touching any model.
+    public func ping() async throws -> Ping {
+        try await get("/v1/ping")
+    }
+
     /// Every model the device offers, with download, memory and load state.
     public func catalog() async throws -> Catalog {
         try await get("/v1/catalog")
+    }
+
+    /// Only the models that are `status`: not downloaded yet, downloaded, or in memory.
+    public func catalog(_ status: Catalog.Status) async throws -> [Catalog.Model] {
+        try await catalog().data.filter(status.includes)
     }
 
     /// The downloaded models.

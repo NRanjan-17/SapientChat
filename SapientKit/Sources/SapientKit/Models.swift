@@ -51,8 +51,32 @@ public struct Health: Codable, Sendable, Equatable {
     public let device: Device?
 }
 
+/// `GET /v1/ping`: SapientChat is up.
+public struct Ping: Codable, Sendable, Equatable {
+    public let status: String
+    /// The SAPIENT engine version.
+    public let version: String
+}
+
 /// `GET /v1/catalog`: every model the device offers.
 public struct Catalog: Codable, Sendable, Equatable {
+    /// A filter over the catalog (also `GET /v1/catalog?status=…`).
+    public enum Status: String, Sendable, CaseIterable {
+        /// Not on the device yet (including partly downloaded ones).
+        case available
+        case downloaded
+        /// In memory now.
+        case loaded
+
+        func includes(_ model: Model) -> Bool {
+            switch self {
+            case .available: !model.downloaded
+            case .downloaded: model.downloaded
+            case .loaded: model.loaded
+            }
+        }
+    }
+
     public struct Model: Codable, Sendable, Equatable, Identifiable {
         /// What to pass as `model`, e.g. "openhorizon/qwen2.5-0.5b".
         public let id: String

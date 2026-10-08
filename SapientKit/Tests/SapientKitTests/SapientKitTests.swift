@@ -154,6 +154,18 @@ struct HTTPTests {
         #expect(health.device?.thermal == "nominal")
     }
 
+    @Test func pingsAndFiltersTheCatalog() async throws {
+        StubProtocol.responses["/v1/ping"] = (200, "application/json", #"{"status":"ok","version":"0.6.6"}"#)
+        let a = #"{"id":"a","name":"a","params":"0.5B","format":"4-bit","parameter_billions":0.5,"estimated_memory_bytes":1,"downloaded":true,"downloaded_bytes":1,"loaded":true,"fits":true}"#
+        let b = #"{"id":"b","name":"b","params":"1.5B","format":"4-bit","parameter_billions":1.5,"estimated_memory_bytes":1,"downloaded":false,"downloaded_bytes":0,"loaded":false,"fits":true}"#
+        StubProtocol.responses["/v1/catalog"] = (200, "application/json",
+            #"{"object":"list","data":["# + a + "," + b + #"],"resident_models":["a"],"max_resident_models":4}"#)
+        #expect(try await client().ping().version == "0.6.6")
+        #expect(try await client().catalog(.downloaded).map(\.id) == ["a"])
+        #expect(try await client().catalog(.available).map(\.id) == ["b"])
+        #expect(try await client().catalog(.loaded).map(\.id) == ["a"])
+    }
+
     @Test func downloadProgressStreams() async throws {
         StubProtocol.responses["/v1/models/download"] = (200, "text/event-stream", """
             data: {"model":"m","status":"downloading","downloaded_bytes":50,"total_bytes":100}
