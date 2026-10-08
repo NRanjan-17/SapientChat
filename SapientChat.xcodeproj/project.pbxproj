@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		E23B08E0307006CB00D68255 /* Sapient in Frameworks */ = {isa = PBXBuildFile; productRef = E23B08E2307006CB00D68255 /* Sapient */; };
-		E2A1000230700F0000D68255 /* SapientActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E2A1000130700F0000D68255 /* SapientActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E2A1000230700F0000D68255 /* Activity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E2A1000130700F0000D68255 /* Activity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,7 +31,7 @@
 			containerPortal = E23B08B0307006CA00D68255 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = E2A1000630700F0000D68255;
-			remoteInfo = SapientActivity;
+			remoteInfo = Activity;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -41,7 +41,7 @@
 			dstPath = "";
 			dstSubfolder = PlugIns;
 			files = (
-				E2A1000230700F0000D68255 /* SapientActivity.appex in Embed Foundation Extensions */,
+				E2A1000230700F0000D68255 /* Activity.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 		};
@@ -51,7 +51,7 @@
 		E23B08B8307006CA00D68255 /* SapientChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SapientChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E23B08C5307006CB00D68255 /* SapientChatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SapientChatTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E23B08CF307006CB00D68255 /* SapientChatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SapientChatUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		E2A1000130700F0000D68255 /* SapientActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SapientActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E2A1000130700F0000D68255 /* Activity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = Activity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +75,9 @@
 			path = Shared;
 			sourceTree = "<group>";
 		};
-		E2A1000530700F0000D68255 /* SapientActivity */ = {
+		E2A1000530700F0000D68255 /* Activity */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SapientActivity;
+			path = Activity;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -114,7 +114,7 @@
 				E23B08C8307006CB00D68255 /* SapientChatTests */,
 				E23B08D2307006CB00D68255 /* SapientChatUITests */,
 				E2A1000430700F0000D68255 /* Shared */,
-				E2A1000530700F0000D68255 /* SapientActivity */,
+				E2A1000530700F0000D68255 /* Activity */,
 				E23B08B9307006CA00D68255 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -125,7 +125,7 @@
 				E23B08B8307006CA00D68255 /* SapientChat.app */,
 				E23B08C5307006CB00D68255 /* SapientChatTests.xctest */,
 				E23B08CF307006CB00D68255 /* SapientChatUITests.xctest */,
-				E2A1000130700F0000D68255 /* SapientActivity.appex */,
+				E2A1000130700F0000D68255 /* Activity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -201,9 +201,9 @@
 			productReference = E23B08CF307006CB00D68255 /* SapientChatUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		E2A1000630700F0000D68255 /* SapientActivity */ = {
+		E2A1000630700F0000D68255 /* Activity */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = E2A1000C30700F0000D68255 /* Build configuration list for PBXNativeTarget "SapientActivity" */;
+			buildConfigurationList = E2A1000C30700F0000D68255 /* Build configuration list for PBXNativeTarget "Activity" */;
 			buildPhases = (
 				E2A1000730700F0000D68255 /* Sources */,
 				E2A1000830700F0000D68255 /* Frameworks */,
@@ -213,11 +213,11 @@
 			);
 			fileSystemSynchronizedGroups = (
 				E2A1000430700F0000D68255 /* Shared */,
-				E2A1000530700F0000D68255 /* SapientActivity */,
+				E2A1000530700F0000D68255 /* Activity */,
 			);
-			name = SapientActivity;
-			productName = SapientActivity;
-			productReference = E2A1000130700F0000D68255 /* SapientActivity.appex */;
+			name = Activity;
+			productName = Activity;
+			productReference = E2A1000130700F0000D68255 /* Activity.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -266,7 +266,7 @@
 				E23B08B7307006CA00D68255 /* SapientChat */,
 				E23B08C4307006CB00D68255 /* SapientChatTests */,
 				E23B08CE307006CB00D68255 /* SapientChatUITests */,
-				E2A1000630700F0000D68255 /* SapientActivity */,
+				E2A1000630700F0000D68255 /* Activity */,
 			);
 		};
 /* End PBXProject section */
@@ -330,7 +330,7 @@
 		};
 		E2A1000B30700F0000D68255 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = E2A1000630700F0000D68255 /* SapientActivity */;
+			target = E2A1000630700F0000D68255 /* Activity */;
 			targetProxy = E2A1000A30700F0000D68255 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -616,7 +616,7 @@
 			};
 			name = Release;
 		};
-		E2A1000D30700F0000D68255 /* Debug configuration for PBXNativeTarget "SapientActivity" */ = {
+		E2A1000D30700F0000D68255 /* Debug configuration for PBXNativeTarget "Activity" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -624,7 +624,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 667V7CCT79;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "SapientActivity-Info.plist";
+				INFOPLIST_FILE = "Activity-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -633,7 +633,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat.SapientActivity";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat.Activity";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -645,7 +645,7 @@
 			};
 			name = Debug;
 		};
-		E2A1000E30700F0000D68255 /* Release configuration for PBXNativeTarget "SapientActivity" */ = {
+		E2A1000E30700F0000D68255 /* Release configuration for PBXNativeTarget "Activity" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -653,7 +653,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 667V7CCT79;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "SapientActivity-Info.plist";
+				INFOPLIST_FILE = "Activity-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -662,7 +662,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat.SapientActivity";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat.Activity";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -709,11 +709,11 @@
 			);
 			defaultConfigurationName = Release;
 		};
-		E2A1000C30700F0000D68255 /* Build configuration list for PBXNativeTarget "SapientActivity" */ = {
+		E2A1000C30700F0000D68255 /* Build configuration list for PBXNativeTarget "Activity" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E2A1000D30700F0000D68255 /* Debug configuration for PBXNativeTarget "SapientActivity" */,
-				E2A1000E30700F0000D68255 /* Release configuration for PBXNativeTarget "SapientActivity" */,
+				E2A1000D30700F0000D68255 /* Debug configuration for PBXNativeTarget "Activity" */,
+				E2A1000E30700F0000D68255 /* Release configuration for PBXNativeTarget "Activity" */,
 			);
 			defaultConfigurationName = Release;
 		};

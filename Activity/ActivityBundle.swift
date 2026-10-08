@@ -5,7 +5,7 @@ import SwiftUI
 import WidgetKit
 
 @main
-struct SapientActivityBundle: WidgetBundle {
+struct ActivityBundle: WidgetBundle {
     var body: some Widget {
         SapientLiveActivity()
     }

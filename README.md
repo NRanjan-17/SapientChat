@@ -36,7 +36,7 @@ then run offline.
 
 1. Open `SapientChat.xcodeproj`.
 2. Select the **SapientChat** scheme, set your team under Signing & Capabilities
-   (app and `SapientActivity` targets).
+   (app and `Activity` targets).
 3. Run on a device or simulator.
 
 The engine comes from the Swift package
@@ -86,7 +86,7 @@ SapientChat/          the app
   Server/             HTTP server, router, request log capture
   ViewModels/         one per screen
   Views/              SwiftUI
-SapientActivity/      Live Activity widget extension
+Activity/             Live Activity widget extension
 Shared/               types used by both (activity attributes)
 SapientKit/           Swift package for other apps to call Sapient Chat
 SapientChatTests/     unit tests (Swift Testing)
