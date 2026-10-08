@@ -42,14 +42,18 @@ struct ModelManagerView: View {
                     } label: {
                         Label {
                             Text("Delete All Downloads")
+                                .foregroundStyle(hasDownloads ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
                         } icon: {
                             Image(systemName: "trash.fill")
                                 .foregroundStyle(.white)
                                 .frame(width: 28, height: 28)
-                                .background(.red.gradient, in: .rect(cornerRadius: 7))
+                                .background(hasDownloads ? AnyShapeStyle(.red.gradient) : AnyShapeStyle(Color(.systemGray3)),
+                                            in: .rect(cornerRadius: 7))
                         }
                     }
-                    .disabled(viewModel.totalDownloadBytes == 0)
+                    // Greyed out with no model on the device (leftover
+                    // tokenizer files alone don't count).
+                    .disabled(!hasDownloads)
                 } header: {
                     Text("Storage")
                 } footer: {
@@ -125,6 +129,11 @@ struct ModelManagerView: View {
                 Text(viewModel.errorMessage ?? "")
             }
         }
+    }
+
+    /// Any model downloaded, or partly downloaded.
+    private var hasDownloads: Bool {
+        viewModel.rows.contains { $0.download.bytes > 0 }
     }
 
     private var actions: ModelManagerRow.Actions {

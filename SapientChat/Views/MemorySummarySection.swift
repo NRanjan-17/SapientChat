@@ -53,15 +53,18 @@ struct MemorySummarySection: View {
                     Text("\(loaded.count) of \(capacity) models loaded")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    if let onUnloadAll {
+                        Button("Unload All", systemImage: "eject", role: .destructive, action: onUnloadAll)
+                            .font(.subheadline)
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(loaded.isEmpty ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                            .disabled(loaded.isEmpty)
+                            .accessibilityLabel("Unload All Models")
+                    }
                 }
                 if !loaded.isEmpty {
                     FlowChips(items: loaded)
-                }
-                if let onUnloadAll {
-                    Button("Unload All Models", systemImage: "eject", role: .destructive, action: onUnloadAll)
-                        .font(.subheadline)
-                        .buttonStyle(.borderless)
-                        .disabled(loaded.isEmpty)
                 }
             }
             .padding(.vertical, 6)
