@@ -8,11 +8,13 @@ import Testing
 /// Records what would go to ActivityKit.
 final class RecordingLiveActivities: LiveActivityService {
     private(set) var started: [SapientActivityAttributes] = []
+    private(set) var startStates: [SapientActivityAttributes.ContentState] = []
     private(set) var updates: [SapientActivityAttributes.ContentState] = []
     private(set) var ended: [SapientActivityAttributes.ContentState] = []
 
     func start(_ attributes: SapientActivityAttributes, state: SapientActivityAttributes.ContentState) -> UUID? {
         started.append(attributes)
+        startStates.append(state)
         return UUID()
     }
 

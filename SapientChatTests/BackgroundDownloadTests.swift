@@ -12,8 +12,14 @@ final class FakeBackgroundScheduler: BackgroundDownloadScheduler {
         var onExpire: (() -> Void)?
         var onRefused: (() -> Void)?
         private(set) var updates: [(UInt64, UInt64)] = []
+        private(set) var titles: [String] = []
+        private(set) var subtitles: [String] = []
         private(set) var result: Bool?
-        func update(downloaded: UInt64, total: UInt64) { updates.append((downloaded, total)) }
+        func update(downloaded: UInt64, total: UInt64, title: String, subtitle: String) {
+            updates.append((downloaded, total))
+            titles.append(title)
+            subtitles.append(subtitle)
+        }
         func finish(success: Bool) { if result == nil { result = success } }
     }
 
@@ -114,7 +120,38 @@ struct BackgroundDownloadTests {
         coordinator.background = scheduler
         coordinator.liveActivities = activities
         try await coordinator.download(TestModels.small.alias) { _ in }
-        #expect(activities.started.map(\.title) == ["Download"])
+        #expect(activities.started.map(\.title) == ["Downloads"])
+    }
+
+    @Test func severalDownloadsShareOneBackgroundTaskWithCombinedProgress() async throws {
+        let scheduler = FakeBackgroundScheduler()
+        let coordinator = DownloadCoordinator(downloads: FakeDownloader(storage: FakeStorage(), steps: 10), catalog: FixedCatalog())
+        coordinator.background = scheduler
+        async let small: Void = coordinator.download(TestModels.small.alias) { _ in }
+        async let big: Void = coordinator.download(TestModels.big.alias) { _ in }
+        _ = try await (small, big)
+        #expect(scheduler.begun.count == 1, "one task for both")
+        let work = try #require(scheduler.works.first)
+        #expect(work.titles.contains("Downloading 2 models"))
+        #expect(work.subtitles.contains { $0.contains(TestModels.small.displayName) && $0.contains(TestModels.big.displayName) })
+        #expect(work.updates.last.map { $0.0 == $0.1 } == true, "ends complete")
+        #expect(work.result == true)
+    }
+
+    @Test func whenIOSRefusesOneActivityListsEveryDownload() async throws {
+        let scheduler = FakeBackgroundScheduler()
+        scheduler.refuses = true
+        let activities = RecordingLiveActivities()
+        let coordinator = DownloadCoordinator(downloads: FakeDownloader(storage: FakeStorage(), steps: 20), catalog: FixedCatalog())
+        coordinator.background = scheduler
+        coordinator.liveActivities = activities
+        async let small: Void = coordinator.download(TestModels.small.alias) { _ in }
+        async let big: Void = coordinator.download(TestModels.big.alias) { _ in }
+        _ = try await (small, big)
+        #expect(activities.started.count == 1, "one activity, not one per download")
+        let listed = (activities.startStates + activities.updates).map { Set($0.downloads.map(\.name)) }
+        #expect(listed.contains([TestModels.small.displayName, TestModels.big.displayName]))
+        #expect(activities.ended.last?.phase == .finished)
     }
 
     @Test func whenIOSAcceptsItsProgressReplacesTheAppsIsland() async throws {

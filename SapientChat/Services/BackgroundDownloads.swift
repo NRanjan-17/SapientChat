@@ -18,10 +18,12 @@ protocol BackgroundDownloadScheduler: AnyObject {
     func holdBriefly(active: Bool)
 }
 
-/// One download iOS lets run in the background, with its progress shown by
-/// the system (Dynamic Island, Lock Screen).
+/// Background time iOS gives the app's downloads (one task covers all of
+/// them), with their progress shown by the system (Dynamic Island, Lock Screen).
 protocol BackgroundDownload: AnyObject {
-    func update(downloaded: UInt64, total: UInt64)
+    /// Combined progress, a title ("Downloading 2 models") and a subtitle
+    /// (the models and their percentages).
+    func update(downloaded: UInt64, total: UInt64, title: String, subtitle: String)
     func finish(success: Bool)
     /// Called if iOS stops the background time before the download ends.
     var onExpire: (() -> Void)? { get set }
@@ -115,7 +117,7 @@ final class ContinuedProcessingDownloads: BackgroundDownloadScheduler {
         var onExpire: (() -> Void)?
         var onRefused: (() -> Void)?
         private var task: BGContinuedProcessingTask?
-        private var last: (downloaded: UInt64, total: UInt64)?
+        private var last: (downloaded: UInt64, total: UInt64, title: String, subtitle: String)?
         private var result: Bool?
 
         init(identifier: String) {
@@ -131,18 +133,16 @@ final class ContinuedProcessingDownloads: BackgroundDownloadScheduler {
             if let result {
                 task.setTaskCompleted(success: result)
             } else if let last {
-                update(downloaded: last.downloaded, total: last.total)
+                update(downloaded: last.downloaded, total: last.total, title: last.title, subtitle: last.subtitle)
             }
         }
 
-        func update(downloaded: UInt64, total: UInt64) {
-            last = (downloaded, total)
+        func update(downloaded: UInt64, total: UInt64, title: String, subtitle: String) {
+            last = (downloaded, total, title, subtitle)
             guard let task else { return }
             task.progress.totalUnitCount = Int64(clamping: max(total, 1))
             task.progress.completedUnitCount = Int64(clamping: min(downloaded, max(total, 1)))
-            if total > 0 {
-                task.updateTitle(task.title, subtitle: "\(Format.bytes(downloaded)) of \(Format.bytes(total))")
-            }
+            task.updateTitle(title, subtitle: subtitle)
         }
 
         func refused() {
