@@ -62,9 +62,6 @@ struct MemorySummarySection: View {
                             .accessibilityLabel("Unload All Models")
                     }
                 }
-                if !loaded.isEmpty {
-                    FlowChips(items: loaded)
-                }
             }
             .padding(.vertical, 6)
         } footer: {
@@ -83,24 +80,6 @@ struct MemorySummarySection: View {
         switch usedFraction ?? 0 {
         case ..<0.85: .accentColor
         default: .orange
-        }
-    }
-}
-
-/// Loaded model names as chips, wrapping onto new lines.
-private struct FlowChips: View {
-    let items: [String]
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) { chips }
-            VStack(alignment: .leading, spacing: 6) { chips }
-        }
-    }
-
-    private var chips: some View {
-        ForEach(items, id: \.self) { name in
-            Chip(name, color: .accentColor)
         }
     }
 }

@@ -104,23 +104,24 @@ struct ModelManagerView: View {
             }
             .task { await viewModel.refresh() }
             .refreshable { await viewModel.refresh() }
-            .confirmationDialog(
+            .alert(
                 "Unload \(viewModel.loaded.count == 1 ? "1 model" : "\(viewModel.loaded.count) models") from memory?",
-                isPresented: $isConfirmingUnloadAll,
-                titleVisibility: .visible
+                isPresented: $isConfirmingUnloadAll
             ) {
+                Button("Cancel", role: .cancel) {}
                 Button("Unload All", role: .destructive) { Task { await viewModel.unloadAll() } }
             } message: {
                 Text("They stay downloaded and load again when used. A reply or benchmark that's running stops.")
             }
-            .confirmationDialog(deleteTitle, isPresented: $isConfirmingDelete, titleVisibility: .visible) {
+            .alert(deleteTitle, isPresented: $isConfirmingDelete) {
+                Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive, action: deletePending)
             }
-            .confirmationDialog(
+            .alert(
                 "Delete all downloads (\(Format.bytes(viewModel.totalDownloadBytes)))?",
-                isPresented: $isConfirmingDeleteAll,
-                titleVisibility: .visible
+                isPresented: $isConfirmingDeleteAll
             ) {
+                Button("Cancel", role: .cancel) {}
                 Button("Delete All", role: .destructive, action: deleteAll)
             }
             .alert("Model", isPresented: $viewModel.errorMessage.isPresent) {

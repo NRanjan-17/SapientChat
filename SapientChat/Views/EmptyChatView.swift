@@ -31,6 +31,7 @@ struct EmptyChatView: View {
             }
             .padding(.vertical)
         }
+        .scrollDismissesKeyboard(.interactively)
         .readableContentWidth(640)
     }
 }

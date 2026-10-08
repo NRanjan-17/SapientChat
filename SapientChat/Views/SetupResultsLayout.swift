@@ -16,9 +16,11 @@ struct SetupResultsLayout<Setup: View, Results: View>: View {
         if horizontalSizeClass == .regular {
             HStack(spacing: 0) {
                 Form { setup() }
+                    .scrollDismissesKeyboard(.interactively)
                     .frame(width: 420)
                 Divider()
                 Form { results() }
+                    .scrollDismissesKeyboard(.interactively)
                     .readableContentWidth(820)
             }
         } else {
@@ -26,6 +28,7 @@ struct SetupResultsLayout<Setup: View, Results: View>: View {
                 setup()
                 results()
             }
+            .scrollDismissesKeyboard(.interactively)
             .readableContentWidth(720)
         }
     }

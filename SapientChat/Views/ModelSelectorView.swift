@@ -41,6 +41,7 @@ struct ModelSelectorView: View {
                 }
             }
             .searchable(text: $viewModel.searchText, prompt: "Search models")
+            .scrollDismissesKeyboard(.interactively)
             .readableContentWidth(720)
             .navigationTitle(viewModel.canSelect ? "Choose Model" : "Downloaded Models")
             .navigationBarTitleDisplayMode(.inline)
@@ -50,14 +51,15 @@ struct ModelSelectorView: View {
                 }
             }
             .task { await viewModel.refresh() }
-            .confirmationDialog(deleteTitle, isPresented: $isConfirmingDelete, titleVisibility: .visible) {
+            .alert(deleteTitle, isPresented: $isConfirmingDelete) {
+                Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive, action: deletePending)
             }
-            .confirmationDialog(
+            .alert(
                 "Delete all downloads (\(Format.bytes(viewModel.totalDownloadBytes)))?",
-                isPresented: $isConfirmingDeleteAll,
-                titleVisibility: .visible
+                isPresented: $isConfirmingDeleteAll
             ) {
+                Button("Cancel", role: .cancel) {}
                 Button("Delete All", role: .destructive, action: deleteAll)
             }
             .alert("Couldn't Delete", isPresented: hasError) {
