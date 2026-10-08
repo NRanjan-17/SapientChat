@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 /// `ModelDownloadService` for SwiftUI previews: a fake 2-second download.
 nonisolated struct PreviewDownloader: ModelDownloadService {
     func download(model: String, onProgress: @escaping @Sendable (DownloadProgress) -> Void) async throws {

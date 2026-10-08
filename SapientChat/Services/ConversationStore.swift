@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 /// Saves and loads chats. Main-actor isolated: SwiftData's main context is.
 protocol ConversationStore: AnyObject {
     /// All chats, most recently updated first.

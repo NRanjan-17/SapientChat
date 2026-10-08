@@ -101,6 +101,19 @@ to answer API requests on your network.
 
 ## License
 
-The SAPIENT engine is AGPL-3.0-only or commercial (OpenHorizon Labs). Model maker
-logos come from [LobeHub Icons](https://github.com/lobehub/lobe-icons) (MIT); they
-are trademarks of their owners. See Settings → About → Acknowledgements.
+Sapient Chat is **dual-licensed** by Nalinish Ranjan: the
+[GNU AGPL-3.0-only](LICENSE) **or** a [commercial license](COMMERCIAL-LICENSE.md)
+for uses that aren't compatible with the AGPL (closed source, rebranding).
+[SapientKit](SapientKit/) is [MIT](SapientKit/LICENSE), so any app can use it to
+talk to Sapient Chat. Every source file carries an SPDX header.
+
+Third-party parts (details in [NOTICE](NOTICE)):
+
+- The **SAPIENT engine** is AGPL-3.0-only or commercial from OpenHorizon Labs Pvt
+  Ltd. Using Sapient Chat outside the AGPL also needs the engine's commercial
+  license. "SAPIENT" and its logo are OpenHorizon Labs trademarks.
+- Model maker logos come from [LobeHub Icons](https://github.com/lobehub/lobe-icons)
+  (MIT) and are trademarks of their owners.
+- Downloaded models carry their own licenses, set by their authors.
+
+The licenses are also in the app: Settings → About → Acknowledgements.

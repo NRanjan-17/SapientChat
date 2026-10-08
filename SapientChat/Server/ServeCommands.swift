@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 /// Ready-to-paste `curl` commands for the Server screen's Try It section,
 /// one per thing the API does, for a chosen endpoint and model.
 nonisolated struct ServeCommand: Identifiable, Equatable, Sendable {

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 import SwiftUI
 
 /// One metric for both models: "Decode   A 27.4 tok/s   B 31.0 tok/s".

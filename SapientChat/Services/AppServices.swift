@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 /// Every service the ViewModels use, injected as one bundle so tests and
 /// previews can swap in fakes. `live()` wires ONE engine for chat,
 /// benchmark and compare, so only one model is ever in memory.

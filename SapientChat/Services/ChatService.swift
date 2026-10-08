@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 /// Runs chat models. The only layer that talks to the inference engine.
 /// Keeps up to `LoadedSlots.defaultCapacity` (4) models in memory.
 nonisolated protocol ChatService: Sendable {

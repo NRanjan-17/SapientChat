@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 /// Measures a model on this device.
 nonisolated protocol BenchmarkService: Sendable {
     /// Loads `model` if it isn't already, then runs `settings`. Reports

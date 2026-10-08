@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Nalinish Ranjan — SapientKit (see SapientKit/LICENSE)
+
 import Foundation
 
 /// One chat message.

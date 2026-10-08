@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 /// Download speed over the last few seconds of progress, so one slow or
 /// fast update doesn't make the number jump.
 nonisolated struct DownloadSpeedMeter {

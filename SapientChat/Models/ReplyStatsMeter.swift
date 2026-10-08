@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 /// Times one streaming reply. Feed it the moment each piece arrives (as an
 /// offset from the request); it computes `ReplyStats`. A value type with
 /// no clock of its own, so tests can drive it with exact times.

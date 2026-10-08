@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 import SwiftUI
 
 /// Versions of the app, the engine and the device it runs on.
@@ -28,6 +31,14 @@ struct AboutSection: View {
 struct AcknowledgementsView: View {
     var body: some View {
         Form {
+            Section {
+                Text("Sapient Chat © 2026 Nalinish Ranjan, licensed under the GNU Affero General Public License v3.0 only, or a commercial license from its author. It comes with no warranty.")
+                Text("The SAPIENT engine © 2026 OpenHorizon Labs Pvt Ltd, licensed under AGPL-3.0-only or a commercial license from OpenHorizon Labs. \"SAPIENT\" and its logo are their trademarks.")
+            } header: {
+                Text("Licenses")
+            } footer: {
+                Text("Full texts: LICENSE, NOTICE and COMMERCIAL-LICENSE.md in the source repository.")
+            }
             Section {
                 Text(Self.lobeHubLicense)
                     .font(.footnote)

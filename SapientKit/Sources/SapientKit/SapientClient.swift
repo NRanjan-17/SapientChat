@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Nalinish Ranjan — SapientKit (see SapientKit/LICENSE)
+
 import Foundation
 
 /// Calls SapientChat, which loads and runs models on the device, from any

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
 // Writes SapientChat's app icon as an Icon Composer bundle (AppIcon.icon):
 // icon.json plus the SAPIENT mark as an SVG layer. iOS renders it with
 // Liquid Glass and derives the tinted and clear looks. Open the result in

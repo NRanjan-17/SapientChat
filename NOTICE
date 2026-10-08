@@ -1,0 +1,62 @@
+Sapient Chat
+Copyright (C) 2026 Nalinish Ranjan
+
+------------------------------------------------------------------------------
+Dual licensing
+------------------------------------------------------------------------------
+
+Sapient Chat is dual-licensed. You may use it under EITHER of the following, at
+your option:
+
+  (1) The GNU Affero General Public License, version 3 (AGPL-3.0-only), the
+      terms of which are in the LICENSE file at the root of this repository and
+      at <https://www.gnu.org/licenses/agpl-3.0.txt>; OR
+
+  (2) A commercial license from Nalinish Ranjan, for uses that are not
+      compatible with the AGPL-3.0. See COMMERCIAL-LICENSE.md.
+
+Unless you have a separate commercial license agreement with Nalinish Ranjan,
+your use is governed by the AGPL-3.0-only.
+
+The SapientKit package (SapientKit/) is licensed separately under the MIT
+License (SapientKit/LICENSE), so any app may use it to talk to Sapient Chat.
+
+------------------------------------------------------------------------------
+AGPL-3.0 warranty notice
+------------------------------------------------------------------------------
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+The AGPL additionally requires that if you run a modified version of this
+program to provide a service over a network (for example its API server), you
+must offer the users of that service access to the complete corresponding
+source code of your modified version.
+
+------------------------------------------------------------------------------
+Third-party components
+------------------------------------------------------------------------------
+
+SAPIENT engine (sapient-swift, SapientFFI.xcframework)
+  Copyright (C) 2026 OpenHorizon Labs Pvt Ltd
+  AGPL-3.0-only OR commercial license from OpenHorizon Labs Pvt Ltd.
+  https://github.com/SkidGod4444/sapient
+  A commercial license for Sapient Chat does not include rights to the SAPIENT
+  engine: distributing Sapient Chat outside the AGPL-3.0 also needs a
+  commercial license for the engine from OpenHorizon Labs Pvt Ltd.
+
+LobeHub Icons (model maker logos in Assets.xcassets/ModelLogos)
+  Copyright (c) 2023 LobeHub. MIT License.
+  https://github.com/lobehub/lobe-icons
+
+Models downloaded at run time carry their own licenses, set by their authors
+(see each model's page on Hugging Face).
+
+------------------------------------------------------------------------------
+Trademarks
+------------------------------------------------------------------------------
+
+"SAPIENT" and the SAPIENT logo are trademarks of OpenHorizon Labs Pvt Ltd. The
+model maker logos are trademarks of their respective owners and identify which
+company made each model. Neither license above grants rights to any trademark.
