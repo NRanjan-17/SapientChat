@@ -113,9 +113,16 @@ final class ChatListViewModel {
     }
 
 
+    /// Back in front: resume any download iOS cut off.
+    func appDidBecomeActive() {
+        services.downloadCoordinator.appBecameActive()
+    }
+
     /// iOS forbids GPU work in the background: stop whatever is generating
     /// (a chat reply, a benchmark, a comparison) when the app leaves.
     func appDidLeaveForeground() {
+        // Downloads keep going in the background; replies and benchmarks stop.
+        services.downloadCoordinator.appMovedToBackground()
         activeChat?.appDidLeaveForeground()
         benchmark.cancel()
         compare.cancel()

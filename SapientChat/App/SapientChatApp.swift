@@ -27,6 +27,8 @@ struct SapientChatApp: App {
         let activities = ActivityKitLiveActivities()
         var services = AppServices.live()
         services.liveActivities = activities
+        // Registers the background task handler, which iOS wants at launch.
+        services.downloadCoordinator.background = ContinuedProcessingDownloads()
         _viewModel = State(initialValue: ChatListViewModel(
             services: services,
             store: SwiftDataConversationStore(context: container.mainContext),

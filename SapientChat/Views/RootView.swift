@@ -56,6 +56,7 @@ struct RootView: View {
 
     private func handleScenePhase(_ phase: ScenePhase) {
         if phase == .active {
+            viewModel.appDidBecomeActive()
             viewModel.server.appDidBecomeActive()
         } else {
             viewModel.appDidLeaveForeground()
