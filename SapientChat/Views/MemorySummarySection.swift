@@ -50,9 +50,8 @@ struct MemorySummarySection: View {
                                 .frame(width: 18, height: 8)
                         }
                     }
-                    Text("\(loaded.count) of \(capacity) models loaded")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    .accessibilityElement()
+                    .accessibilityLabel("\(loaded.count) of \(capacity) models loaded")
                     Spacer(minLength: 8)
                     if let onUnloadAll {
                         Button("Unload All", systemImage: "eject", role: .destructive, action: onUnloadAll)

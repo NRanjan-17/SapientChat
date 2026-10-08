@@ -148,13 +148,8 @@ private struct StatsRow: View {
 
     var body: some View {
         if state.downloadCount > 0 {
-            // Downloads: how many and how fast; the bar above is combined.
-            tiles {
-                stat("\(state.downloadCount)", state.downloadCount == 1 ? "model" : "models")
-                if let speed = state.bytesPerSecond {
-                    stat(Int64(speed).formatted(.byteCount(style: .file)) + "/s", "speed")
-                }
-            }
+            // Downloads: count and speed are in the status line above.
+            EmptyView()
         } else if state.phase == .serving {
             tiles {
                 stat("\(state.requests)", state.requests == 1 ? "request" : "requests")

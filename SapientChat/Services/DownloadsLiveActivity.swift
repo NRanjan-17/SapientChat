@@ -36,11 +36,13 @@ final class DownloadsLiveActivity {
         state.downloadCount = names.count
         state.progress = progress
         state.bytesPerSecond = bytesPerSecond
-        state.detail = names.count == 1 ? names[0] : "\(names.count) models"
+        // Speed goes in the status line: the Island has no room for more.
+        let what = names.count == 1 ? names[0] : "\(names.count) models"
+        state.detail = bytesPerSecond.map { "\(what) · \(Format.bytes(UInt64($0)))/s" } ?? what
         let now = clock()
         guard let id else {
             state.startedAt = now
-            id = service.start(SapientActivityAttributes(title: "Downloads", model: "Models"), state: state)
+            id = service.start(SapientActivityAttributes(title: "Sapient", model: "Model downloads"), state: state)
             lastSent = now
             return
         }

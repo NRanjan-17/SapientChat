@@ -150,7 +150,7 @@ struct BackgroundDownloadTests {
         _ = try await (small, big)
         #expect(activities.started.count == 1, "one activity, not one per download")
         let states = activities.startStates + activities.updates
-        #expect(states.contains { $0.downloadCount == 2 && $0.detail == "2 models" })
+        #expect(states.contains { $0.downloadCount == 2 && $0.detail?.hasPrefix("2 models") == true })
         #expect(activities.ended.last?.phase == .finished)
     }
 
@@ -183,11 +183,12 @@ struct DownloadsLiveActivityTests {
         let service = RecordingLiveActivities()
         let activity = DownloadsLiveActivity(service: service, minimumInterval: 0)
         activity.show(names: ["qwen2.5-1.5b"], progress: 0.2, bytesPerSecond: 4_000_000)
-        #expect(service.startStates.first?.detail == "qwen2.5-1.5b")
+        #expect(service.startStates.first?.detail?.hasPrefix("qwen2.5-1.5b · ") == true)
         activity.show(names: ["qwen2.5-1.5b", "smollm2-1.7b"], progress: 0.3, bytesPerSecond: 9_000_000)
         let state = try! #require(service.updates.last)
         #expect(state.downloadCount == 2)
-        #expect(state.detail == "2 models")
+        #expect(state.detail?.hasPrefix("2 models · ") == true)
+        #expect(state.detail?.hasSuffix("/s") == true)
         #expect(state.progress == 0.3)
         #expect(state.bytesPerSecond == 9_000_000)
         activity.finish(failures: [])
