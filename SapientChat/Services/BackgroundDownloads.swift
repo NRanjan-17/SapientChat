@@ -41,11 +41,12 @@ final class ContinuedProcessingDownloads: BackgroundDownloadScheduler {
     /// isn't an error iOS returns: it aborts the app.
     private var isRegistered = false
 
-    /// A task identifier iOS matches against `<prefix>.*`: the part after the
-    /// prefix must be one segment, so letters and digits only. (A model name
-    /// like "qwen2.5-0.5b" has dots; an identifier built from it matched
-    /// nothing and iOS ended the app.)
-    static func identifier(for model: String) -> String {
+    /// A new task identifier that iOS matches against `<prefix>.*`: the part
+    /// after the prefix must be one segment, so a random ID of letters and
+    /// digits, never anything from a model's name (a name like "qwen2.5-0.5b"
+    /// has dots; an identifier built from it matched nothing and iOS ended
+    /// the app). Works for any model, including ones added later.
+    static func newIdentifier() -> String {
         identifierPrefix + "." + UUID().uuidString.filter { $0.isLetter || $0.isNumber }
     }
 
@@ -65,7 +66,7 @@ final class ContinuedProcessingDownloads: BackgroundDownloadScheduler {
 
     func begin(model: String, title: String) -> (any BackgroundDownload)? {
         guard isRegistered else { return nil }
-        let identifier = Self.identifier(for: model)
+        let identifier = Self.newIdentifier()
         let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: title, subtitle: "Starting…")
         // Fail rather than queue: a queued request might start after the
         // download is done; the brief hold and resume-on-return cover it.
