@@ -17,6 +17,10 @@ can't answer while your app is in front. The handoff covers that case.
 `SapientClient.automatic` tries HTTP first and falls back to the handoff.
 
 HTTP needs the server on: in SapientChat, tap **API Server** and turn it on.
+It answers while SapientChat is open; Debug/sideload builds can keep it
+answering with the app closed (Endpoints & Access → Keep running in background).
+Other ways to use SAPIENT, including embedding the engine in your own app:
+[docs/INTEGRATION.md](../docs/INTEGRATION.md).
 
 ## Install
 
@@ -48,8 +52,12 @@ If an API key is set on SapientChat's server screen, pass it as `apiKey:`.
 ## Use
 
 ```swift
+// Is SapientChat there? No model work.
+let up = try await sapient.ping()
+
 // What the device offers, and what's downloaded, loaded, and fits in memory.
 let catalog = try await sapient.catalog()
+let downloaded = try await sapient.catalog(.downloaded)   // or .available, .loaded
 
 // Download (with progress over HTTP), then load.
 for try await event in sapient.downloadWithProgress("openhorizon/qwen2.5-0.5b") {
@@ -85,10 +93,11 @@ management. Any HTTP client works; SapientKit is a convenience.
 
 | Route | |
 | --- | --- |
+| `GET /v1/ping` | `{"status":"ok","version":…}`, no model work |
 | `GET /v1/health` | Engine version, loaded models, memory, thermal state |
 | `GET /v1/models` | Downloaded models |
-| `GET /v1/catalog` | Every model offered, with download/load/fit state |
-| `POST /v1/models/download` | `{"model", "stream"?}` — progress as server-sent events with `stream` |
+| `GET /v1/catalog` | Every model offered, with download/load/fit state and sizes (`memory`, `size_on_disk`); `?status=available\|downloaded\|loaded` filters it |
+| `POST /v1/models/download` | `{"model", "stream"?}` — progress as server-sent events with `stream` (`progress` "45%", `size` "412 MB of 1.1 GB") |
 | `POST /v1/models/load` | `{"model"}` — downloads if needed |
 | `POST /v1/models/unload` | `{"model"?}` — omit to unload all |
 | `POST /v1/models/delete` | `{"model"}` |
@@ -113,6 +122,11 @@ sapient://x-callback-url/request
   &x-error=<url>                  same plus error=<message>, for 4xx/5xx
   &x-cancel=<url>                 opened if the user cancels
 ```
+
+Plain JSON replies are indented with sorted keys; streamed events are one line
+each. Downloads and loads started over the API show in SapientChat's Models tab
+and Dynamic Island, and every request is in its Request Log with the prompt,
+reply and timing.
 
 ## Limits (set by SAPIENT's iOS engine)
 
