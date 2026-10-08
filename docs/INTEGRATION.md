@@ -109,6 +109,9 @@ four in memory) and ask it to run them. `SapientKit` (in this repo) wraps the
 API with Swift types, over HTTP or, on the same iPhone, a URL handoff that brings
 Sapient Chat to the front and returns the result to your app.
 
+Add it by URL: Xcode → File → Add Package Dependencies →
+`https://github.com/NRanjan-17/SapientChat`, product **SapientKit** (MIT).
+
 ```swift
 import SapientKit
 

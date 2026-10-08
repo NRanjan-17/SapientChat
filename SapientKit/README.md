@@ -24,7 +24,22 @@ Other ways to use SAPIENT, including embedding the engine in your own app:
 
 ## Install
 
-Add this package (`SapientKit/` in the SapientChat repo) to your app, then:
+In Xcode: **File → Add Package Dependencies**, enter
+
+```
+https://github.com/NRanjan-17/SapientChat
+```
+
+and add the **SapientKit** product to your app target (only SapientKit builds;
+the app itself isn't part of the package). Or in `Package.swift`:
+
+```swift
+.package(url: "https://github.com/NRanjan-17/SapientChat", from: "1.0.0"),
+// target dependency:
+.product(name: "SapientKit", package: "SapientChat"),
+```
+
+Requires iOS 18 / macOS 15. MIT-licensed. Then:
 
 ```swift
 import SapientKit

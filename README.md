@@ -48,7 +48,7 @@ Tests:
 ```bash
 xcodebuild test -project SapientChat.xcodeproj -scheme SapientChat \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:SapientChatTests
-(cd SapientKit && swift test)
+swift test    # SapientKit, from the repository root
 ```
 
 Debug builds accept `-SapientTab chats|models|benchmark|settings` (Edit Scheme →
