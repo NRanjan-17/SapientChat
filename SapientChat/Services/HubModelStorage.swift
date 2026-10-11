@@ -20,13 +20,38 @@ nonisolated struct HubModelStorage: ModelStorageService {
     }
 
     func download(forRepo repoId: String) -> ModelDownload {
-        let blobs = folder(forRepo: repoId).appending(path: "blobs")
+        let repo = folder(forRepo: repoId)
+        let blobs = repo.appending(path: "blobs")
         let bytes = Self.size(of: blobs)
         guard bytes > 0 else { return .notDownloaded }
         // hf-hub writes in-flight files as `*.part` (`.sync.part` from the
         // async client) and renames them when complete.
         let names = (try? FileManager.default.contentsOfDirectory(atPath: blobs.path(percentEncoded: false))) ?? []
-        return names.contains { $0.hasSuffix(".part") } ? .partial(bytes: bytes) : .downloaded(bytes: bytes)
+        if names.contains(where: { $0.hasSuffix(".part") }) { return .partial(bytes: bytes) }
+        // Small files (config, tokenizer) finish first while the weights are
+        // still being written elsewhere: only the weights make it complete.
+        return Self.hasCompleteWeights(in: repo.appending(path: "snapshots")) ? .downloaded(bytes: bytes) : .partial(bytes: bytes)
+    }
+
+    /// The snapshot holds a GGUF, or safetensors with every shard its index
+    /// lists, or a single safetensors/bin file. A snapshot entry appears
+    /// only once its file is complete.
+    static func hasCompleteWeights(in snapshots: URL) -> Bool {
+        let manager = FileManager.default
+        guard let entries = manager.enumerator(at: snapshots, includingPropertiesForKeys: nil) else { return false }
+        var files: [String: URL] = [:]
+        for case let url as URL in entries where manager.fileExists(atPath: url.path(percentEncoded: false)) {
+            files[url.lastPathComponent] = url
+        }
+        if files.keys.contains(where: { $0.hasSuffix(".gguf") }) { return true }
+        if let index = files.first(where: { $0.key.hasSuffix(".safetensors.index.json") })?.value {
+            guard let data = try? Data(contentsOf: index),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let map = json["weight_map"] as? [String: String]
+            else { return false }
+            return Set(map.values).allSatisfy { files[$0] != nil }
+        }
+        return files.keys.contains { $0.hasSuffix(".safetensors") || $0.hasSuffix(".bin") }
     }
 
     func deleteDownload(forRepo repoId: String) throws {

@@ -63,7 +63,7 @@ public final class HandoffTransport: SapientTransport {
             pending.withLock { $0[id] = continuation }
             Task {
                 if !(await open(url)) {
-                    resume(id, with: .failure(SapientError.unavailable("SapientChat isn't installed on this device.")))
+                    resume(id, with: .failure(SapientError.unavailable("Sapient isn't installed on this device.")))
                 }
             }
         }

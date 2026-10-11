@@ -10,7 +10,7 @@ struct ModelStatsDeviceSection: View {
 
     var body: some View {
         Section("Device") {
-            if let used = device.memory.footprintBytes {
+            if let used = device.memory.residentBytes {
                 LabeledContent("App memory in use", value: Format.bytes(used))
             }
             if let available = device.memory.availableBytes {

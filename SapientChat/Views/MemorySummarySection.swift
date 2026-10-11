@@ -18,7 +18,7 @@ struct MemorySummarySection: View {
                     IconText("Memory", systemImage: "memorychip")
                         .font(.headline)
                     Spacer()
-                    if let used = memory.footprintBytes {
+                    if let used = memory.residentBytes {
                         Text("\(Format.bytes(used)) used")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(pressureColor)
@@ -71,7 +71,7 @@ struct MemorySummarySection: View {
 
     /// Share of the app's allowance in use; nil without a known limit.
     private var usedFraction: Double? {
-        guard let used = memory.footprintBytes, let available = memory.availableBytes else { return nil }
+        guard let used = memory.residentBytes, let available = memory.availableBytes else { return nil }
         let total = Double(used) + Double(available)
         return total > 0 ? min(1, Double(used) / total) : nil
     }

@@ -151,10 +151,10 @@ public enum SapientError: Error, Sendable, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .api(let status, let message): "SapientChat error \(status): \(message)"
+        case .api(let status, let message): "Sapient error \(status): \(message)"
         case .unavailable(let reason): reason
-        case .cancelled: "The request was cancelled in SapientChat."
-        case .invalidResponse: "SapientChat sent a response this version of SapientKit can't read."
+        case .cancelled: "The request was cancelled in Sapient."
+        case .invalidResponse: "Sapient sent a response this version of SapientKit can't read."
         }
     }
 }

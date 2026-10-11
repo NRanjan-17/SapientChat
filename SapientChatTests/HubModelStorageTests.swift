@@ -45,3 +45,46 @@ struct HubModelStorageTests {
         #expect(storage.totalDownloadBytes() == 0)
     }
 }
+
+/// Small files land before the weights: that's not a finished download.
+struct HubModelStorageCompletenessTests {
+    private func repo(_ files: [String: Data]) throws -> (HubModelStorage, URL) {
+        let root = FileManager.default.temporaryDirectory.appending(path: "hub-test-\(UUID().uuidString)")
+        let repo = root.appending(path: "hub/models--org--name")
+        let blobs = repo.appending(path: "blobs")
+        let snapshot = repo.appending(path: "snapshots/main")
+        try FileManager.default.createDirectory(at: blobs, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: snapshot, withIntermediateDirectories: true)
+        for (name, data) in files {
+            let blob = blobs.appending(path: UUID().uuidString)
+            try data.write(to: blob)
+            try FileManager.default.createSymbolicLink(at: snapshot.appending(path: name), withDestinationURL: blob)
+        }
+        return (HubModelStorage(root: root), root)
+    }
+
+    @Test func configAndTokenizerAloneArePartial() throws {
+        let (storage, root) = try repo(["config.json": Data(count: 1_000), "tokenizer.json": Data(count: 1_000_000)])
+        defer { try? FileManager.default.removeItem(at: root) }
+        #expect(storage.download(forRepo: "org/name") == .partial(bytes: 1_001_000))
+    }
+
+    @Test func shardedSafetensorsNeedEveryShard() throws {
+        let index = Data(#"{"weight_map":{"a":"model-00001-of-00002.safetensors","b":"model-00002-of-00002.safetensors"}}"#.utf8)
+        let (storage, root) = try repo([
+            "config.json": Data(count: 10), "model.safetensors.index.json": index,
+            "model-00001-of-00002.safetensors": Data(count: 100),
+        ])
+        defer { try? FileManager.default.removeItem(at: root) }
+        #expect(!storage.download(forRepo: "org/name").isDownloaded, "shard 2 is missing")
+        let snapshot = root.appending(path: "hub/models--org--name/snapshots/main")
+        try Data(count: 100).write(to: snapshot.appending(path: "model-00002-of-00002.safetensors"))
+        #expect(storage.download(forRepo: "org/name").isDownloaded)
+    }
+
+    @Test func aSingleWeightsFileIsComplete() throws {
+        let (storage, root) = try repo(["config.json": Data(count: 10), "model.safetensors": Data(count: 100)])
+        defer { try? FileManager.default.removeItem(at: root) }
+        #expect(storage.download(forRepo: "org/name").isDownloaded)
+    }
+}

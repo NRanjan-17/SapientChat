@@ -122,7 +122,7 @@ nonisolated struct AppProblem: Equatable, Sendable, Identifiable {
         }
         if has("401 unauthorized", "403 forbidden", "(401", "(403") {
             return problem(.accessDenied, "This Model Needs Approval",
-                           "\(model)'s owner requires you to accept their license on huggingface.co before downloading, which SapientChat can't do for you. Pick another model in Models.")
+                           "\(model)'s owner requires you to accept their license on huggingface.co before downloading, which Sapient can't do for you. Pick another model in Models.")
         }
         if has("404 not found", "(404") {
             return problem(.notFound, "Model Files Not Found",
@@ -152,8 +152,8 @@ nonisolated struct AppProblem: Equatable, Sendable, Identifiable {
     /// The model was loading when iOS closed the app (it ran out of memory).
     static func closedWhileLoading(model: String) -> AppProblem {
         AppProblem(
-            kind: .closedWhileLoading, title: "\(model) Needed More Memory",
-            message: "SapientChat closed while loading \(model) because iOS ran out of memory for it. The app now plans for its real size: it will release idle models first, or tell you if it still can't fit. Tap Try Again to load it."
+            kind: .closedWhileLoading, title: "Sapient Closed While Loading",
+            message: "Sapient closed while loading \(model), most likely because the phone ran out of memory. Tap Try Again: idle models are released first to make room, and if it still can't fit you'll be told instead."
         )
     }
 

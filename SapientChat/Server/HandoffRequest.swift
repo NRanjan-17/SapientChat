@@ -38,7 +38,7 @@ nonisolated struct HandoffRequest: Sendable {
 
         var errorDescription: String? {
             switch self {
-            case .notAHandoff: "Not a SapientChat request."
+            case .notAHandoff: "Not a Sapient request."
             case .missingPath: "The request didn't say which API route to call."
             case .badBody: "The request body isn't base64url-encoded JSON."
             }

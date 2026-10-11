@@ -81,7 +81,7 @@ struct HandoffTests {
 
     @Test func notInstalledFailsFast() async {
         let sapient = SapientClient(transport: HandoffTransport(callbackScheme: "myapp") { _ in false })
-        await #expect(throws: SapientError.unavailable("SapientChat isn't installed on this device.")) {
+        await #expect(throws: SapientError.unavailable("Sapient isn't installed on this device.")) {
             try await sapient.health()
         }
     }

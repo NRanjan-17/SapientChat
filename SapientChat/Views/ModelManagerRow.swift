@@ -98,6 +98,10 @@ struct ModelManagerRow: View {
 }
 
 extension ModelManagerViewModel.Row {
+    var isDownloading: Bool {
+        if case .downloading = activity { true } else { false }
+    }
+
     var canDelete: Bool {
         download.bytes > 0 && activity == nil
     }

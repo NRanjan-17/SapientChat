@@ -78,7 +78,7 @@ nonisolated struct PhoneModel: Identifiable, Hashable, Sendable {
         guard required > headroom else { return nil }
         let need = Int64(clamping: required).formatted(.byteCount(style: .memory))
         let have = Int64(clamping: headroom).formatted(.byteCount(style: .memory))
-        return "\(displayName) needs about \(need), but iOS lets SapientChat use only about \(have) more, even after releasing idle models. "
+        return "\(displayName) needs about \(need), but iOS lets Sapient use only about \(have) more, even after releasing idle models. "
             + "Pick a smaller model or its 4-bit (Q4) version, or close other apps and tap Try Again."
     }
 

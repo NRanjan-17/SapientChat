@@ -26,7 +26,7 @@ struct ServerView: View {
                 }
             } footer: {
                 Text("Serves SAPIENT's OpenAI-compatible API (as `sapient serve` does) from the models on this device. "
-                    + "Apps on this iPhone reach SapientChat through a sapient:// handoff instead (SapientKit does both).")
+                    + "Apps on this iPhone reach Sapient through a sapient:// handoff instead (SapientKit does both).")
             }
 
             Section {
@@ -94,7 +94,7 @@ struct ServerView: View {
             Button("Turn On") { viewModel.setRunsInBackground(true) }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("SapientChat keeps running with the app closed to answer API requests. "
+            Text("Sapient keeps running with the app closed to answer API requests. "
                 + "This uses noticeably more battery and can warm the phone. "
                 + "Models run on the CPU (iOS doesn't allow GPU work in the background), so models in memory are released now. "
                 + "iOS may still close the app if memory runs low. Not available in App Store builds.")
@@ -138,13 +138,13 @@ struct ServerView: View {
     private var backgroundFooter: String {
         if ServerViewModel.canRunInBackground && !viewModel.isOn {
             return "Turn on the server to choose whether it keeps running in the background. "
-                + "While it's off, SapientChat closes like any other app."
+                + "While it's off, Sapient closes like any other app."
         }
         if viewModel.isServingInBackground {
             return "Running with the app closed, on the CPU. Uses more battery; turn off when you don't need it."
         }
         return "With the app closed, requests already running get about 30 seconds to finish, then the server pauses "
-            + "until you open SapientChat again."
+            + "until you open Sapient again."
             + (ServerViewModel.canRunInBackground ? " Turn this on to keep serving with the app closed." : "")
     }
 

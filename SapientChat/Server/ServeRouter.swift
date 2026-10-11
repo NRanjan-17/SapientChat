@@ -137,7 +137,7 @@ final class ServeRouter {
             version: SapientVersion.current, loadedModel: resident.first, residentModels: resident,
             maxResidentModels: LoadedSlots<Void>.defaultCapacity,
             device: DeviceHealth(
-                footprintBytes: device.memory.footprintBytes,
+                footprintBytes: device.memory.residentBytes,
                 availableBytes: device.memory.availableBytes,
                 thermal: String(describing: device.thermal)
             )

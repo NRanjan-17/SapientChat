@@ -34,7 +34,7 @@ public struct HTTPTransport: SapientTransport {
         do {
             (data, response) = try await session.data(for: request(method: method, path: path, body: body))
         } catch let error as URLError where Self.isUnreachable(error) {
-            throw SapientError.unavailable("Can't reach SapientChat at \(baseURL.absoluteString): \(error.localizedDescription)")
+            throw SapientError.unavailable("Can't reach Sapient at \(baseURL.absoluteString): \(error.localizedDescription)")
         }
         guard let http = response as? HTTPURLResponse else { throw SapientError.invalidResponse }
         return (http.statusCode, data)
@@ -68,7 +68,7 @@ public struct HTTPTransport: SapientTransport {
                     continuation.finish()
                 } catch let error as URLError where Self.isUnreachable(error) {
                     continuation.finish(throwing: SapientError.unavailable(
-                        "Can't reach SapientChat at \(baseURL.absoluteString): \(error.localizedDescription)"
+                        "Can't reach Sapient at \(baseURL.absoluteString): \(error.localizedDescription)"
                     ))
                 } catch {
                     continuation.finish(throwing: error)

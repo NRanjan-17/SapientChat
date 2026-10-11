@@ -8,9 +8,11 @@ import Foundation
 ///
 /// A load that runs out of memory doesn't throw: iOS ends the app. So each
 /// load is written down before it starts and crossed off after; one still
-/// written down at launch is a load iOS ended the app during. That model is
-/// then known to need more than was free at the time, and the app says so
-/// instead of trying the same thing again.
+/// written down at launch is a load the app was ended during, which the app
+/// then says. It teaches nothing about that model's size: the phone may
+/// have run out because of the models already loaded, or the app may have
+/// been stopped for another reason, and blaming the model made a 135M model
+/// push out everything else.
 nonisolated final class ModelMemoryLedger: @unchecked Sendable {
     static let standard = ModelMemoryLedger(defaults: .standard)
 
@@ -34,13 +36,15 @@ nonisolated final class ModelMemoryLedger: @unchecked Sendable {
         }
     }
 
-    /// Crosses the load off and remembers how much the footprint grew.
+    /// Crosses the load off and remembers how much RAM it took. A real
+    /// measurement replaces an earlier one, or a guess from a load iOS
+    /// ended the app during (which may have been something else).
     func finishLoad(_ alias: String, grewBy bytes: UInt64?) {
         lock.withLock {
             defaults.removeObject(forKey: Keys.inFlight)
             guard let bytes, bytes > 0 else { return }
             var all = sizes
-            all[alias] = max(all[alias] ?? 0, bytes)
+            all[alias] = bytes
             sizes = all
         }
     }
@@ -51,17 +55,11 @@ nonisolated final class ModelMemoryLedger: @unchecked Sendable {
         lock.withLock { defaults.removeObject(forKey: Keys.inFlight) }
     }
 
-    /// The model iOS ended the app while loading, once, at launch. It's
-    /// recorded as needing more than was free when it tried.
+    /// The model the app was ended while loading, once, at launch.
     func takeLoadThatEndedTheApp() -> String? {
         lock.withLock {
             guard let entry = defaults.dictionary(forKey: Keys.inFlight), let alias = entry["model"] as? String else { return nil }
             defaults.removeObject(forKey: Keys.inFlight)
-            if let free = (entry["available"] as? NSNumber)?.uint64Value, free > 0 {
-                var all = sizes
-                all[alias] = max(all[alias] ?? 0, free + 1)
-                sizes = all
-            }
             return alias
         }
     }
@@ -69,8 +67,10 @@ nonisolated final class ModelMemoryLedger: @unchecked Sendable {
     // MARK: Storage
 
     private enum Keys {
-        static let sizes = "memory.measuredBytes"
-        static let inFlight = "memory.loadInFlight"
+        // v2: measured as resident RAM, mapped model files included (v1
+        // counted only the footprint and read low).
+        static let sizes = "memory.measuredBytes.v2"
+        static let inFlight = "memory.loadInFlight.v2"
     }
 
     private var sizes: [String: UInt64] {

@@ -62,10 +62,11 @@ final class ModelManagerViewModel: Identifiable {
     var loadedRows: [Row] { sorted(rows.filter(\.isLoaded)) }
     /// Models downloading or loading right now.
     var activeRows: [Row] { rows.filter { $0.activity != nil } }
-    /// Downloaded but not in memory.
-    var downloadedRows: [Row] { sorted(rows.filter { !$0.isLoaded && $0.download.isDownloaded }) }
-    /// Not on this device yet, including paused downloads.
-    var notDownloadedRows: [Row] { sorted(rows.filter { !$0.isLoaded && !$0.download.isDownloaded }) }
+    /// Downloaded but not in memory. A model still downloading never counts,
+    /// whatever files have landed so far.
+    var downloadedRows: [Row] { sorted(rows.filter { !$0.isLoaded && $0.download.isDownloaded && !$0.isDownloading }) }
+    /// Not on this device yet, including paused and running downloads.
+    var notDownloadedRows: [Row] { sorted(rows.filter { !$0.isLoaded && (!$0.download.isDownloaded || $0.isDownloading) }) }
 
     private func sorted(_ rows: [Row]) -> [Row] {
         sort.sorted(rows, by: \.model)

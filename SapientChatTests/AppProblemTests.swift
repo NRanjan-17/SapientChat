@@ -105,23 +105,24 @@ struct MemoryPlannerIdleFirstTests {
 }
 
 struct ModelMemoryLedgerTests {
-    @Test func remembersTheLargestMeasuredSize() {
+    @Test func remembersTheLatestMeasuredSize() {
         let ledger = makeMemoryLedger()
         ledger.beginLoad("a", availableBytes: 3_000)
         ledger.finishLoad("a", grewBy: 1_000)
         ledger.beginLoad("a", availableBytes: 3_000)
         ledger.finishLoad("a", grewBy: 800)
-        #expect(ledger.requiredBytes(for: "a") == 1_000)
+        #expect(ledger.requiredBytes(for: "a") == 800, "the latest measurement wins")
         #expect(ledger.takeLoadThatEndedTheApp() == nil, "both loads were crossed off")
     }
 
-    @Test func aLoadNeverCrossedOffWasEndedByIOS() {
+    @Test func aLoadNeverCrossedOffIsReportedButDoesntResizeTheModel() {
         let defaults = UserDefaults(suiteName: "ledger-\(UUID().uuidString)")!
-        ModelMemoryLedger(defaults: defaults).beginLoad("big", availableBytes: 2_000)
+        ModelMemoryLedger(defaults: defaults).beginLoad("small", availableBytes: 5_000_000_000)
         // Next launch: a new ledger over the same storage.
         let relaunched = ModelMemoryLedger(defaults: defaults)
-        #expect(relaunched.takeLoadThatEndedTheApp() == "big")
-        #expect(relaunched.requiredBytes(for: "big") == 2_001, "needs more than was free")
+        #expect(relaunched.takeLoadThatEndedTheApp() == "small")
+        #expect(relaunched.requiredBytes(for: "small") == nil,
+                "being loaded when the app ended doesn't mean it needed 5 GB (that's how a 135M model pushed out a 1.7B)")
         #expect(relaunched.takeLoadThatEndedTheApp() == nil, "reported once")
     }
 

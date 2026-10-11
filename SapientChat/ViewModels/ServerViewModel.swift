@@ -289,7 +289,7 @@ final class ServerViewModel: Identifiable {
     }
 
     private static var bonjourName: String {
-        "SapientChat on \(UIDevice.current.name)"
+        "Sapient on \(UIDevice.current.name)"
     }
 
     /// Port and reachability apply on restart.
