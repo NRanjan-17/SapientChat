@@ -14,9 +14,10 @@ final class RequestCapture {
     private var lastToken: ContinuousClock.Instant?
     private var isFinished = false
 
-    init(_ request: HTTPRequest, source: String?) {
+    init(_ request: HTTPRequest, client: ClientIdentity) {
         entry = RequestLogEntry(
-            date: .now, method: request.method, path: request.path, source: source,
+            date: .now, method: request.method, path: request.path, source: client.app,
+            device: client.device, userAgent: client.userAgent,
             requestBody: RequestLogEntry.text(of: request.body)
         )
     }

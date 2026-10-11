@@ -95,7 +95,22 @@ try await sapient.delete("openhorizon/qwen2.5-0.5b")
 
 // Engine version, loaded models, memory and thermal state.
 let health = try await sapient.health()
+
+// A model's temperature and context window (applied when it loads; a model
+// in memory reloads once). `.keep` leaves one as it is, `.useDefault` resets it.
+let settings = try await sapient.settings(for: "openhorizon/qwen2.5-1.5b")
+try await sapient.updateSettings("openhorizon/qwen2.5-1.5b", temperature: .set(0.7), contextWindow: .set(4096))
+try await sapient.updateSettings("openhorizon/qwen2.5-1.5b", temperature: .useDefault)
 ```
+
+### Which app is calling
+
+Sapient's request log (Settings › API Server › Requests) shows the app and
+device behind each request. SapientKit sends your app's name as
+`X-Sapient-Client` (pass `appName:` to change it); other clients can send that
+header too. Without it, Sapient falls back to the `User-Agent` (iOS apps send
+`AppName/1 CFNetwork/…`; curl, Python, Node and browsers name themselves).
+A client can claim any name, so treat it as a label, not proof.
 
 Errors are `SapientError`: `.api(status:message:)`, `.unavailable` (not installed
 or not reachable), `.cancelled` (the user cancelled in SapientChat),
@@ -116,6 +131,8 @@ management. Any HTTP client works; SapientKit is a convenience.
 | `POST /v1/models/load` | `{"model"}` — downloads if needed |
 | `POST /v1/models/unload` | `{"model"?}` — omit to unload all |
 | `POST /v1/models/delete` | `{"model"}` |
+| `GET /v1/models/settings?model=…` | `temperature` and `context_window` (`null` = default), the allowed range and choices, `loaded` |
+| `POST /v1/models/settings` | `{"model", "temperature"?, "context_window"?}`: a field left out is kept, `null` resets it; a loaded model reloads once |
 | `POST /v1/chat/completions` | OpenAI chat: `model`, `messages`, `stream`, `max_tokens`, `stop` |
 | `POST /v1/completions` | `prompt` instead of `messages` |
 
@@ -147,6 +164,7 @@ reply and timing.
 
 - Only catalog models sized for phones load; memory is checked against what iOS
   allows before each load.
-- `temperature` and `tools` aren't applied per request; a reply is capped at 512
-  tokens. `usage.prompt_tokens` is 0; `completion_tokens` counts streamed pieces.
+- `temperature` in a chat request isn't applied per request (the engine sets it
+  when a model loads): set it per model with `POST /v1/models/settings`.
+  `tools` aren't supported; a reply is capped at 512 tokens. `usage.prompt_tokens` is 0; `completion_tokens` counts streamed pieces.
 - `/v1/completions` runs the prompt through the model's chat template.

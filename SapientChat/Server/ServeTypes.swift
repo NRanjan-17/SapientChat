@@ -230,6 +230,10 @@ nonisolated struct CatalogResponse: Codable, Sendable {
         /// The two sizes above for people: "1.5 GB".
         let memory: String
         let sizeOnDisk: String
+        /// Sampling temperature; absent means Precise (greedy).
+        var temperature: Double?
+        /// Context window in tokens; absent means the engine's default.
+        var contextWindow: Int?
     }
 
     var object = "list"
@@ -294,5 +298,60 @@ extension AppProblem {
         case .memoryBusy, .modelReleased, .closedWhileLoading: 503
         case .loadFailed: 500
         }
+    }
+}
+
+/// `GET /v1/models/settings?model=…`, and the answer to a `POST` there:
+/// a model's sampling temperature and context window, which SAPIENT applies
+/// when the model loads. `null` means the default.
+nonisolated struct ModelSettingsResponse: Codable, Sendable {
+    let model: String
+    /// Sampling temperature; null is Precise (greedy: the same prompt
+    /// always gets the same answer).
+    let temperature: Double?
+    /// Lowest and highest temperature accepted.
+    let temperatureRange: [Double]
+    /// Context window in tokens; null is the engine's default.
+    let contextWindow: Int?
+    /// Only models of 1.4B and up can pick their context window.
+    let contextWindowAdjustable: Bool
+    let contextWindowChoices: [Int]
+    let loaded: Bool
+    /// On a POST: whether anything changed, and whether the model was
+    /// reloaded so the next request uses it.
+    var updated: Bool?
+    var reloaded: Bool?
+
+    private enum CodingKeys: String, CodingKey {
+        case model, temperature, temperatureRange, contextWindow, contextWindowAdjustable, contextWindowChoices
+        case loaded, updated, reloaded
+    }
+
+    init(model: String, temperature: Double?, contextWindow: Int?, adjustable: Bool, loaded: Bool,
+         updated: Bool? = nil, reloaded: Bool? = nil) {
+        self.model = model
+        self.temperature = temperature
+        temperatureRange = [TemperatureStore.range.lowerBound, TemperatureStore.range.upperBound]
+        self.contextWindow = contextWindow
+        contextWindowAdjustable = adjustable
+        contextWindowChoices = adjustable ? ContextWindowStore.choices : []
+        self.loaded = loaded
+        self.updated = updated
+        self.reloaded = reloaded
+    }
+
+    /// Writes `null` for a default instead of leaving the key out, so a
+    /// client sees every setting.
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(model, forKey: .model)
+        try container.encode(temperature, forKey: .temperature)
+        try container.encode(temperatureRange, forKey: .temperatureRange)
+        try container.encode(contextWindow, forKey: .contextWindow)
+        try container.encode(contextWindowAdjustable, forKey: .contextWindowAdjustable)
+        try container.encode(contextWindowChoices, forKey: .contextWindowChoices)
+        try container.encode(loaded, forKey: .loaded)
+        try container.encodeIfPresent(updated, forKey: .updated)
+        try container.encodeIfPresent(reloaded, forKey: .reloaded)
     }
 }

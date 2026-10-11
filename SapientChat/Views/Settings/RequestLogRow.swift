@@ -47,7 +47,11 @@ struct RequestLogRow: View {
         var parts: [String] = []
         if let model = entry.model { parts.append(model.split(separator: "/").last.map(String.init) ?? model) }
         if let rate = entry.tokensPerSecond { parts.append(Format.rate(rate)) }
+        // "from Notes Helper", plus where from when it's another device.
         if let source = entry.source { parts.append("from \(source)") }
+        if let device = entry.device, device != ClientIdentity.thisDevice {
+            parts.append(entry.source == nil ? "from \(device)" : device)
+        }
         return parts
     }
 }

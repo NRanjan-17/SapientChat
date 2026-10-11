@@ -51,6 +51,7 @@ final class ChatListViewModel {
         handoff = HandoffViewModel(router: router)
         models = ModelManagerViewModel(services: services, device: device)
         router.onModelPhase = { [models] alias, phase in models.apiPhase(phase, for: alias) }
+        router.onSettingsChanged = { [models] in Task { await models.refresh() } }
         services.downloadCoordinator.onChange = { [models] alias, progress in models.downloadChanged(progress, for: alias) }
         let catalog = services.catalog.chatModels()
         let firstModel = store.conversations().first?.modelAlias ?? PhoneModel.defaultAlias

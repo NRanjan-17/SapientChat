@@ -93,6 +93,10 @@ public struct Catalog: Codable, Sendable, Equatable {
         public let loaded: Bool
         /// Whether it should fit in memory now.
         public let fits: Bool
+        /// Sampling temperature; nil is Precise (greedy).
+        public let temperature: Double?
+        /// Context window in tokens; nil is the engine's default.
+        public let contextWindow: Int?
     }
 
     public let data: [Model]
@@ -138,6 +142,36 @@ public struct DownloadEvent: Codable, Sendable, Equatable {
     public var fraction: Double? {
         totalBytes > 0 ? min(1, Double(downloadedBytes) / Double(totalBytes)) : nil
     }
+}
+
+/// A model's sampling temperature and context window. Sapient applies them
+/// when the model loads; changing them reloads a model that's in memory.
+public struct ModelSettings: Codable, Sendable, Equatable {
+    public let model: String
+    /// Sampling temperature; nil is Precise (greedy: the same prompt always
+    /// gets the same answer).
+    public let temperature: Double?
+    /// Lowest and highest temperature accepted, e.g. [0, 1.5].
+    public let temperatureRange: [Double]
+    /// Context window in tokens; nil is the engine's default.
+    public let contextWindow: Int?
+    /// Only models of 1.4B and up can pick their context window.
+    public let contextWindowAdjustable: Bool
+    public let contextWindowChoices: [Int]
+    public let loaded: Bool
+    /// After an update: whether anything changed.
+    public let updated: Bool?
+    /// After an update: whether the model was reloaded to use it.
+    public let reloaded: Bool?
+}
+
+/// One setting in `SapientClient.updateSettings`.
+public enum SettingChange<Value: Sendable & Equatable>: Sendable, Equatable {
+    /// Leave it as it is.
+    case keep
+    /// Go back to the default (Precise, or the engine's context window).
+    case useDefault
+    case set(Value)
 }
 
 public enum SapientError: Error, Sendable, Equatable, LocalizedError {

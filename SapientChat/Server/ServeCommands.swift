@@ -42,6 +42,12 @@ nonisolated enum ServeCommands {
             ServeCommand(group: .models, title: "Load into memory", command: post("/v1/models/load", "{\(name)}")),
             ServeCommand(group: .models, title: "Unload from memory", command: post("/v1/models/unload", "{\(name)}")),
             ServeCommand(group: .models, title: "Delete download", command: post("/v1/models/delete", "{\(name)}")),
+            ServeCommand(group: .models, title: "Model settings", command: get("/v1/models/settings?model=\(model)")),
+            ServeCommand(group: .models, title: "Set temperature", command: post("/v1/models/settings", "{\(name),\"temperature\":0.7}")),
+            ServeCommand(group: .models, title: "Set context window", command: post("/v1/models/settings", "{\(name),\"context_window\":4096}")),
+            ServeCommand(group: .models, title: "Reset settings", command: post(
+                "/v1/models/settings", "{\(name),\"temperature\":null,\"context_window\":null}"
+            )),
             ServeCommand(group: .generate, title: "Chat", command: post(
                 "/v1/chat/completions", #"{\#(name),"messages":[{"role":"user","content":"Hi!"}]}"#
             )),

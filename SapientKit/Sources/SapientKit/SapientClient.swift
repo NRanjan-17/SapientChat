@@ -28,15 +28,34 @@ public final class SapientClient: Sendable {
         self.transport = transport
     }
 
-    /// Over HTTP, at an address the API Server screen shows.
-    public static func http(_ baseURL: URL, apiKey: String? = nil) -> SapientClient {
-        SapientClient(transport: HTTPTransport(baseURL: baseURL, apiKey: apiKey))
+    /// Over HTTP, at an address the API Server screen shows. `appName` is
+    /// what Sapient's request log calls you (your app's name by default).
+    public static func http(_ baseURL: URL, apiKey: String? = nil, appName: String? = SapientClient.appName) -> SapientClient {
+        SapientClient(transport: HTTPTransport(baseURL: baseURL, apiKey: apiKey, clientName: appName))
+    }
+
+    /// This app's name (display name, else bundle name, else process name),
+    /// sent so Sapient's request log can say which app called.
+    public static var appName: String? {
+        let info = Bundle.main.infoDictionary
+        let name = (info?["CFBundleDisplayName"] as? String) ?? (info?["CFBundleName"] as? String) ?? ProcessInfo.processInfo.processName
+        return name.isEmpty ? nil : name
+    }
+
+    /// Percent-encodes what a header can't carry (non-ASCII, `%`); Sapient
+    /// decodes it.
+    static func headerValue(_ name: String) -> String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        var allowed = CharacterSet(charactersIn: " !#$&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~")
+        allowed.remove(charactersIn: "%")
+        return trimmed.addingPercentEncoding(withAllowedCharacters: allowed)
     }
 
     #if canImport(UIKit)
     /// By URL handoff to SapientChat on this device.
     public static func handoff(callbackScheme: String, appName: String? = nil, apiKey: String? = nil) -> SapientClient {
-        SapientClient(transport: HandoffTransport(callbackScheme: callbackScheme, appName: appName, apiKey: apiKey))
+        SapientClient(transport: HandoffTransport(callbackScheme: callbackScheme, appName: appName ?? Self.appName, apiKey: apiKey))
     }
 
     /// The server on this device when it answers (SapientChat in front, e.g.
@@ -46,8 +65,8 @@ public final class SapientClient: Sendable {
         baseURL: URL = URL(string: "http://127.0.0.1:\(defaultPort)")!
     ) -> SapientClient {
         SapientClient(transport: FallbackTransport(
-            primary: HTTPTransport(baseURL: baseURL, apiKey: apiKey),
-            fallback: HandoffTransport(callbackScheme: callbackScheme, appName: appName, apiKey: apiKey)
+            primary: HTTPTransport(baseURL: baseURL, apiKey: apiKey, clientName: appName ?? Self.appName),
+            fallback: HandoffTransport(callbackScheme: callbackScheme, appName: appName ?? Self.appName, apiKey: apiKey)
         ))
     }
     #endif
@@ -87,6 +106,39 @@ public final class SapientClient: Sendable {
     /// The downloaded models.
     public func models() async throws -> ModelList {
         try await get("/v1/models")
+    }
+
+    /// A model's temperature and context window.
+    public func settings(for model: String) async throws -> ModelSettings {
+        let encoded = model.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&=+"))) ?? model
+        return try await get("/v1/models/settings?model=\(encoded)")
+    }
+
+    /// Changes a model's temperature and/or context window; `.keep` leaves
+    /// one as it is. A model in memory is reloaded once so the next request
+    /// uses the new settings.
+    ///
+    ///     try await sapient.updateSettings("openhorizon/qwen2.5-1.5b", temperature: .set(0.7))
+    ///     try await sapient.updateSettings(model, temperature: .useDefault, contextWindow: .set(4096))
+    @discardableResult
+    public func updateSettings(
+        _ model: String,
+        temperature: SettingChange<Double> = .keep,
+        contextWindow: SettingChange<Int> = .keep
+    ) async throws -> ModelSettings {
+        var body: [String: Any] = ["model": model]
+        switch temperature {
+        case .keep: break
+        case .useDefault: body["temperature"] = NSNull()
+        case .set(let value): body["temperature"] = value
+        }
+        switch contextWindow {
+        case .keep: break
+        case .useDefault: body["context_window"] = NSNull()
+        case .set(let value): body["context_window"] = value
+        }
+        let data = try JSONSerialization.data(withJSONObject: body)
+        return try decode(try await transport.send(method: "POST", path: "/v1/models/settings", body: data))
     }
 
     /// Downloads a model without loading it.

@@ -12,6 +12,9 @@ nonisolated struct HTTPRequest: Sendable {
     /// Header names lowercased.
     var headers: [String: String] = [:]
     var body = Data()
+    /// The caller's IP address; nil for requests that didn't come over a
+    /// socket (URL handoffs).
+    var remoteAddress: String?
 
     func header(_ name: String) -> String? {
         headers[name.lowercased()]

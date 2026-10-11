@@ -21,8 +21,11 @@ nonisolated struct RequestLogEntry: Identifiable, Equatable, Sendable, Codable {
     var method: String
     var path: String
     var status = 0
-    /// The app that handed the request over by URL; nil for network clients.
+    /// The app that sent it (see `ClientIdentity`); nil when nothing named it.
     var source: String?
+    /// "This device", or the caller's IP address.
+    var device: String?
+    var userAgent: String?
     var model: String?
     var durationMs: Int?
     /// The prompt: chat history, or a completion's prompt as one user message.

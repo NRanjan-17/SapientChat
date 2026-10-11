@@ -154,6 +154,10 @@ nonisolated private final class HTTPConnection: @unchecked Sendable {
 
     private func respond(to request: HTTPRequest) {
         let handler = handler
+        var request = request
+        if case .hostPort(let host, _) = connection.endpoint {
+            request.remoteAddress = "\(host)"
+        }
         responding = Task { [self] in
             await write(await handler(request))
         }

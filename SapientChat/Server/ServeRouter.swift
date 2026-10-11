@@ -31,6 +31,8 @@ final class ServeRouter {
     /// Told each download/load step of a model an API request prepares, then
     /// nil when it's done, so the Models tab shows API work too.
     var onModelPhase: ((String, ModelPhase?) -> Void)?
+    /// A client changed a model's temperature or context window.
+    var onSettingsChanged: (() -> Void)?
     /// Shows chat, completion, download and load requests in the Dynamic Island.
     var liveActivities: any LiveActivityService = NoLiveActivities()
 
@@ -43,12 +45,14 @@ final class ServeRouter {
     }
 
     /// Answers `request`. `source` names the app that sent it, when known.
+    /// - Parameter source: the app that handed the request over by URL.
     func handle(_ request: HTTPRequest, source: String? = nil) async -> HTTPResponse {
+        let client = ClientIdentity.of(request, handoffSource: source)
         let activity = Self.showsActivity(request) ? LiveActivityTracker(
             service: liveActivities,
-            title: source.map { "Request from \($0)" } ?? "API request"
+            title: client.app.map { "Request from \($0)" } ?? "API request"
         ) : nil
-        let capture = RequestCapture(request, source: source)
+        let capture = RequestCapture(request, client: client)
         let response = await route(request, activity: activity, capture: capture)
         switch response.body {
         case .data(let data):
@@ -106,6 +110,10 @@ final class ServeRouter {
             return await load(request, activity: activity, capture: capture)
         case ("POST", "/v1/models/unload"):
             return await unload(request)
+        case ("GET", "/v1/models/settings"):
+            return await modelSettings(request)
+        case ("POST", "/v1/models/settings"):
+            return await updateModelSettings(request, capture: capture)
         case ("POST", "/v1/models/delete"):
             return await deleteDownload(request)
         case ("POST", "/v1/audio/transcriptions"), ("POST", "/v1/audio/speech"), ("POST", "/v1/actions"):
@@ -185,7 +193,9 @@ final class ServeRouter {
                 loaded: resident.contains(model.alias),
                 fits: MemoryPlanner.plan(loading: model, loaded: loaded, availableBytes: device.memory.availableBytes).fits,
                 memory: Format.bytes(model.estimatedMemoryBytes),
-                sizeOnDisk: Format.bytes(download.bytes)
+                sizeOnDisk: Format.bytes(download.bytes),
+                temperature: services.temperatures.temperature(for: model.alias),
+                contextWindow: services.contextWindows.tokens(for: model.alias)
             )
         }
         return .json(CatalogResponse(
@@ -309,6 +319,108 @@ final class ServeRouter {
     }
 
     /// The model a download, load or delete names; it must name one.
+    // MARK: Model settings
+
+    /// A model's temperature and context window.
+    private func modelSettings(_ request: HTTPRequest) async -> HTTPResponse {
+        guard let name = request.query["model"], !name.isEmpty else {
+            return .json(ServeErrorBody.invalidRequest("Pass the model, e.g. /v1/models/settings?model=openhorizon/qwen2.5-0.5b"), status: 400)
+        }
+        guard let model = resolve(name) else {
+            return .json(ServeErrorBody.modelNotFound("Model '\(name)' isn't in this device's catalog. GET /v1/catalog lists them."), status: 400)
+        }
+        return .json(await settingsResponse(for: model))
+    }
+
+    /// Changes a model's temperature and/or context window. A field left
+    /// out is kept; `null` goes back to the default. A model in memory is
+    /// reloaded once so the next request uses the new settings.
+    private func updateModelSettings(_ request: HTTPRequest, capture: RequestCapture) async -> HTTPResponse {
+        guard let body = (try? JSONSerialization.jsonObject(with: request.body)) as? [String: Any] else {
+            return .json(ServeErrorBody.invalidRequest("Send a JSON object: {\"model\": …, \"temperature\": 0.7, \"context_window\": 4096}"), status: 422)
+        }
+        guard let name = body["model"] as? String, !name.isEmpty else {
+            return .json(ServeErrorBody.invalidRequest("'model' is required"), status: 400)
+        }
+        guard let model = resolve(name) else {
+            return .json(ServeErrorBody.modelNotFound("Model '\(name)' isn't in this device's catalog. GET /v1/catalog lists them."), status: 400)
+        }
+        capture.model(model.alias)
+        let alias = model.alias
+        var temperature = services.temperatures.temperature(for: alias)
+        var contextWindow = services.contextWindows.tokens(for: alias)
+
+        if body.keys.contains("temperature") {
+            switch body["temperature"] {
+            case is NSNull:
+                temperature = nil
+            case let number as NSNumber where !(number === kCFBooleanTrue || number === kCFBooleanFalse):
+                let value = number.doubleValue
+                guard TemperatureStore.range.contains(value) else {
+                    return .json(ServeErrorBody.invalidRequest(
+                        "temperature must be between \(TemperatureStore.range.lowerBound) and \(TemperatureStore.range.upperBound) (0 or null is Precise)"
+                    ), status: 400)
+                }
+                temperature = TemperatureStore.normalized(value)
+            default:
+                return .json(ServeErrorBody.invalidRequest("temperature must be a number or null"), status: 400)
+            }
+        }
+        if body.keys.contains("context_window") {
+            switch body["context_window"] {
+            case is NSNull:
+                contextWindow = nil
+            case let number as NSNumber where !(number === kCFBooleanTrue || number === kCFBooleanFalse):
+                guard ContextWindowStore.isAdjustable(model) else {
+                    return .json(ServeErrorBody.invalidRequest(
+                        "\(model.displayName) uses the default context window; only models of \(ContextWindowStore.minimumBillions.formatted())B and up can pick one"
+                    ), status: 400)
+                }
+                guard ContextWindowStore.choices.contains(number.intValue), Double(number.intValue) == number.doubleValue else {
+                    let choices = ContextWindowStore.choices.map(String.init).joined(separator: ", ")
+                    return .json(ServeErrorBody.invalidRequest("context_window must be one of \(choices), or null for the default"), status: 400)
+                }
+                contextWindow = number.intValue
+            default:
+                return .json(ServeErrorBody.invalidRequest("context_window must be a number or null"), status: 400)
+            }
+        }
+
+        let changed = temperature != services.temperatures.temperature(for: alias)
+            || contextWindow != services.contextWindows.tokens(for: alias)
+        guard changed else {
+            var response = await settingsResponse(for: model)
+            response.updated = false
+            response.reloaded = false
+            return .json(response)
+        }
+        services.temperatures.set(temperature, for: alias)
+        services.contextWindows.set(contextWindow, for: alias)
+        var reloaded = false
+        if await services.chat.loadedModels().contains(alias) {
+            await services.chat.unload(model: alias)
+            switch await prepare(alias, capture: capture) {
+            case .success: reloaded = true
+            case .failure(let failure): return failure.response
+            }
+        }
+        onSettingsChanged?()
+        var response = await settingsResponse(for: model)
+        response.updated = true
+        response.reloaded = reloaded
+        return .json(response)
+    }
+
+    private func settingsResponse(for model: PhoneModel) async -> ModelSettingsResponse {
+        ModelSettingsResponse(
+            model: model.alias,
+            temperature: services.temperatures.temperature(for: model.alias),
+            contextWindow: services.contextWindows.tokens(for: model.alias),
+            adjustable: ContextWindowStore.isAdjustable(model),
+            loaded: await services.chat.loadedModels().contains(model.alias)
+        )
+    }
+
     private func requiredModel(_ request: HTTPRequest) -> Result<PhoneModel, Failure> {
         switch modelAction(request) {
         case .success(let (model?, _)): .success(model)
@@ -586,6 +698,7 @@ final class ServeRouter {
     private static let routes: Set<String> = [
         "/v1/models", "/v1/health", "/v1/ping", "/v1/chat/completions", "/v1/completions",
         "/v1/catalog", "/v1/models/download", "/v1/models/load", "/v1/models/unload", "/v1/models/delete",
+        "/v1/models/settings",
         "/v1/audio/transcriptions", "/v1/audio/speech", "/v1/actions",
     ]
 

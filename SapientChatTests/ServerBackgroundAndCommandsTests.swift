@@ -10,12 +10,16 @@ struct ServeCommandsTests {
         let commands = ServeCommands.all(base: "http://10.0.0.2:11435", apiKey: "k", model: "openhorizon/m")
         #expect(commands.allSatisfy { $0.command.contains("http://10.0.0.2:11435/v1/") })
         #expect(commands.allSatisfy { $0.command.contains("Authorization: Bearer k") })
-        let modelCommands = ["Download", "Load into memory", "Unload from memory", "Delete download", "Chat", "Chat, streaming", "Completion"]
+        let modelCommands = [
+            "Download", "Load into memory", "Unload from memory", "Delete download", "Chat", "Chat, streaming", "Completion",
+            "Set temperature", "Set context window", "Reset settings",
+        ]
         for title in modelCommands {
             let command = commands.first { $0.title == title }?.command ?? ""
             #expect(command.contains(#""model":"openhorizon/m""#), "\(title)")
         }
         #expect(Set(commands.map(\.group)) == Set(ServeCommand.Group.allCases))
+        #expect(commands.first { $0.title == "Model settings" }?.command.contains("/v1/models/settings?model=openhorizon/m") == true)
     }
 
     @Test func noKeyMeansNoAuthHeader() {

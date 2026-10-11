@@ -18,7 +18,15 @@ struct RequestDetailView: View {
                 }
                 LabeledContent("Endpoint", value: "\(entry.method) \(entry.path)")
                 LabeledContent("Time", value: entry.date.formatted(date: .abbreviated, time: .standard))
-                LabeledContent("From", value: entry.source ?? "Network client")
+                LabeledContent("App", value: entry.source ?? "Not named")
+                if let device = entry.device { LabeledContent("Device", value: device) }
+                if let agent = entry.userAgent {
+                    LabeledContent("User agent") {
+                        Text(agent)
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                    }
+                }
                 if let model = entry.model { LabeledContent("Model", value: model) }
                 if let duration = entry.durationMs {
                     LabeledContent("Took", value: Duration.milliseconds(duration).formatted(.units(allowed: [.seconds, .milliseconds], width: .abbreviated)))

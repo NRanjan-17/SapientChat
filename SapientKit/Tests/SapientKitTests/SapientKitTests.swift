@@ -96,11 +96,25 @@ struct HandoffTests {
 /// Stubs URLSession responses by path.
 final class StubProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var responses: [String: (status: Int, contentType: String, body: String)] = [:]
+    /// What the client sent: URL, headers and body.
+    nonisolated(unsafe) static var sent: [(url: URL, headers: [String: String], body: Data)] = []
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        var body = request.httpBody ?? Data()
+        if let stream = request.httpBodyStream {
+            stream.open()
+            var buffer = [UInt8](repeating: 0, count: 4096)
+            while stream.hasBytesAvailable {
+                let read = stream.read(&buffer, maxLength: buffer.count)
+                if read <= 0 { break }
+                body.append(buffer, count: read)
+            }
+            stream.close()
+        }
+        Self.sent.append((request.url!, request.allHTTPHeaderFields ?? [:], body))
         let stub = Self.responses[request.url!.path()] ?? (404, "application/json", #"{"error":{"message":"No route"}}"#)
         let response = HTTPURLResponse(url: request.url!, statusCode: stub.status, httpVersion: "HTTP/1.1",
                                        headerFields: ["Content-Type": stub.contentType])!
@@ -182,5 +196,57 @@ struct HTTPTests {
         var fractions: [Double?] = []
         for try await event in client().downloadWithProgress("m") { fractions.append(event.fraction) }
         #expect(fractions == [0.5, 1])
+    }
+}
+
+/// In `HTTPTests` (serialized): every test here shares `StubProtocol`.
+extension HTTPTests {
+    private func namedClient(appName: String? = "Notes Helper") -> SapientClient {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [StubProtocol.self]
+        let transport = HTTPTransport(baseURL: URL(string: "http://phone.local:11435")!, clientName: appName, session: URLSession(configuration: configuration))
+        return SapientClient(transport: transport)
+    }
+
+    private static let settingsJSON = """
+        {"model":"openhorizon/qwen2.5-1.5b","temperature":0.7,"temperature_range":[0,1.5],"context_window":null,\
+        "context_window_adjustable":true,"context_window_choices":[1024,2048,3072,4096,6144,8192],"loaded":true,\
+        "updated":true,"reloaded":true}
+        """
+
+    @Test func readsSettingsWithTheModelAsAQuery() async throws {
+        StubProtocol.sent = []
+        StubProtocol.responses["/v1/models/settings"] = (200, "application/json", Self.settingsJSON)
+        let settings = try await namedClient().settings(for: "openhorizon/qwen2.5-1.5b")
+        #expect(settings.temperature == 0.7)
+        #expect(settings.contextWindow == nil)
+        #expect(settings.contextWindowChoices.contains(4096))
+        let url = try #require(StubProtocol.sent.last?.url)
+        #expect(url.path() == "/v1/models/settings", "the ? isn't escaped into the path")
+        #expect(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first?.value == "openhorizon/qwen2.5-1.5b")
+    }
+
+    @Test func updateSendsOnlyWhatChangesAndNullForDefault() async throws {
+        StubProtocol.sent = []
+        StubProtocol.responses["/v1/models/settings"] = (200, "application/json", Self.settingsJSON)
+        let result = try await namedClient().updateSettings("openhorizon/qwen2.5-1.5b", temperature: .set(0.7), contextWindow: .useDefault)
+        #expect(result.reloaded == true)
+        let body = try #require(StubProtocol.sent.last?.body)
+        let json = try #require(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        #expect(json["temperature"] as? Double == 0.7)
+        #expect(json["context_window"] is NSNull, "null resets to the default")
+
+        _ = try await namedClient().updateSettings("m", temperature: .set(1.0))
+        let second = try #require(try JSONSerialization.jsonObject(with: StubProtocol.sent.last!.body) as? [String: Any])
+        #expect(second.keys.contains("context_window") == false, ".keep sends nothing")
+    }
+
+    @Test func namesTheAppInEveryRequest() async throws {
+        StubProtocol.sent = []
+        StubProtocol.responses["/v1/models"] = (200, "application/json", #"{"data":[],"active_model":null,"resident_models":[]}"#)
+        _ = try await namedClient(appName: "Café Notes").models()
+        #expect(StubProtocol.sent.last?.headers["X-Sapient-Client"] == "Caf%C3%A9 Notes", "non-ASCII is percent-encoded")
+        _ = try await namedClient(appName: nil).models()
+        #expect(StubProtocol.sent.last?.headers["X-Sapient-Client"] == nil)
     }
 }

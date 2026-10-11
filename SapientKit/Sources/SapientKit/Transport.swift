@@ -19,13 +19,16 @@ public protocol SapientTransport: Sendable {
 public struct HTTPTransport: SapientTransport {
     public let baseURL: URL
     public let apiKey: String?
+    /// Sent as `X-Sapient-Client`, so Sapient's request log names your app.
+    public let clientName: String?
     let session: URLSession
 
     /// `baseURL` is an address the API Server screen shows, e.g.
-    /// `http://192.168.1.20:11435`.
-    public init(baseURL: URL, apiKey: String? = nil, session: URLSession = .shared) {
+    /// `http://192.168.1.20:11435`. `clientName` defaults to your app's name.
+    public init(baseURL: URL, apiKey: String? = nil, clientName: String? = SapientClient.appName, session: URLSession = .shared) {
         self.baseURL = baseURL
         self.apiKey = apiKey
+        self.clientName = clientName
         self.session = session
     }
 
@@ -79,13 +82,24 @@ public struct HTTPTransport: SapientTransport {
     }
 
     private func request(method: String, path: String, body: Data?) -> URLRequest {
-        var request = URLRequest(url: baseURL.appending(path: path))
+        // `path` may carry a query (/v1/models/settings?model=…): keep it
+        // a query rather than escaping its `?` into the path.
+        let parts = path.split(separator: "?", maxSplits: 1).map(String.init)
+        var url = baseURL.appending(path: parts[0])
+        if parts.count > 1, var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            components.percentEncodedQuery = parts[1]
+            url = components.url ?? url
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.httpBody = body
         // Loading a model can take a while on first use.
         request.timeoutInterval = 600
         if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         if let apiKey, !apiKey.isEmpty { request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization") }
+        if let clientName, let value = SapientClient.headerValue(clientName) {
+            request.setValue(value, forHTTPHeaderField: "X-Sapient-Client")
+        }
         return request
     }
 
