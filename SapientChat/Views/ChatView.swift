@@ -20,7 +20,9 @@ struct ChatView: View {
                 MessageListView(
                     messages: viewModel.messages,
                     canRegenerate: viewModel.canRegenerate,
-                    onRegenerate: viewModel.regenerate
+                    onRegenerate: viewModel.regenerate,
+                    canEdit: viewModel.canEdit,
+                    onEdit: viewModel.edit
                 )
             }
         }
@@ -67,6 +69,7 @@ struct ChatView: View {
         .sheet(item: $modelSelector) { selector in
             ModelSelectorView(viewModel: selector)
         }
+        .problemAlert($viewModel.alert) { _ in viewModel.regenerate() }
         .sheet(isPresented: $isShowingStats) {
             ModelStatsSheet(viewModel: viewModel)
         }

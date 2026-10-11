@@ -3,10 +3,11 @@
 
 import Foundation
 
-/// Gets a model ready to use, shared by chat, the model manager and
-/// compare: plans memory (releasing least recently used models so the new
-/// one fits, keeping up to four together when they do), downloads it if its files
-/// aren't complete, then loads it. Reports each phase as it starts.
+/// Gets a model ready to use, shared by chat, the model manager, compare
+/// and the API: plans memory (releasing idle models, least recently used
+/// first, so the new one fits; never one that's answering), downloads it if
+/// its files aren't complete, then loads it, measuring what it really took.
+/// Reports each phase as it starts.
 struct ModelPreparer {
     let services: AppServices
     let device: DeviceStatus
@@ -14,7 +15,8 @@ struct ModelPreparer {
     var showsDownloadIsland = true
 
     /// Ready `alias` and return the hardware label. Throws
-    /// `ChatViewModelError.wontFit` before touching anything if it can't fit.
+    /// `ChatViewModelError.wontFit` (or `.busy`, when only a model that's
+    /// answering is in the way) before touching anything if it can't fit.
     func prepare(_ alias: String, onPhase: @escaping (ModelPhase) -> Void) async throws -> String {
         let catalog = services.catalog.chatModels()
         let model = catalog.first { $0.alias == alias }
@@ -22,18 +24,22 @@ struct ModelPreparer {
 
         if let model {
             device.refreshMemory()
-            // CPU + GPU holds a full-precision model twice: plan for that, so
-            // it's refused with a reason instead of iOS ending the app.
+            // Planned at its real size when that's known, so it's refused
+            // with a reason instead of iOS ending the app.
             let plan = MemoryPlanner.plan(
-                loading: model.forPlanning(backend: EngineBackendPreference.backend(for: model)),
+                loading: model,
                 loaded: loaded.map { name in (name, catalog.first { $0.alias == name }) },
-                availableBytes: device.memory.availableBytes
+                availableBytes: device.memory.availableBytes,
+                busy: await services.chat.busyModels(),
+                size: services.plannedSize
             )
             switch plan {
             case .alreadyLoaded:
                 break
             case .wontFit(let message):
                 throw ChatViewModelError.wontFit(message)
+            case .busy(let message):
+                throw ChatViewModelError.busy(message)
             case .load(let releasing):
                 for name in releasing {
                     await services.chat.unload(model: name)
@@ -43,11 +49,28 @@ struct ModelPreparer {
                 }
             }
         }
-        if !loaded.contains(alias) {
-            onPhase(.loading)
+        guard !loaded.contains(alias) else {
+            return try await services.chat.load(model: alias)
         }
-        let backend = try await services.chat.load(model: alias)
+        onPhase(.loading)
         device.refreshMemory()
+        let before = device.memory
+        // Written down first: if iOS ends the app mid-load, the next launch
+        // knows which model did it.
+        services.memoryLedger.beginLoad(alias, availableBytes: before.availableBytes)
+        let backend: String
+        do {
+            backend = try await services.chat.load(model: alias)
+        } catch {
+            services.memoryLedger.abandonLoad()
+            throw error
+        }
+        device.refreshMemory()
+        var grew: UInt64?
+        if let old = before.footprintBytes, let new = device.memory.footprintBytes, new > old {
+            grew = new - old
+        }
+        services.memoryLedger.finishLoad(alias, grewBy: grew)
         return backend
     }
 

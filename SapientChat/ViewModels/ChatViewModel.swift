@@ -12,6 +12,8 @@ final class ChatViewModel {
     let conversation: Conversation
     private(set) var messages: [ChatMessage]
     private(set) var status: ChatStatus = .idle
+    /// A problem to show as a pop-up; cleared when it's dismissed.
+    var alert: AppProblem?
     private(set) var backendLabel: String?
     /// Speed of the reply streaming right now (≈ tok/s), updated twice a second.
     private(set) var liveTokensPerSecond: Double?
@@ -83,7 +85,7 @@ final class ChatViewModel {
         case .downloading(let model, let progress): "Downloading \(model) · \(progress.text)"
         case .loading(let model): "Loading \(model) into memory…"
         case .generating: "Generating" + (liveTokensPerSecond.map { " · \(Format.rate($0)) tok/s" } ?? "…") + thermal
-        case .failed(let message): "Error: \(message)"
+        case .failed(let problem): problem.title
         }
     }
 
@@ -117,6 +119,34 @@ final class ChatViewModel {
             store.remove(last, from: conversation)
             messages.removeLast()
         }
+        startReply()
+    }
+
+    /// Your messages can be edited while nothing is generating.
+    var canEdit: Bool { !isBusy }
+
+    /// Replaces your message `id` with `text` and answers again from there,
+    /// as editing a prompt does on Claude: every message after it is removed,
+    /// and the model replies to the edited conversation.
+    func edit(_ id: UUID, to text: String) {
+        let edited = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canEdit, !edited.isEmpty,
+              let index = messages.firstIndex(where: { $0.id == id }),
+              messages[index].role == .user
+        else { return }
+        let original = messages[index].text
+        // A title made from the old first message follows the edit.
+        if index == messages.firstIndex(where: { $0.role == .user }), conversation.title == Self.title(from: original) {
+            conversation.title = Self.title(from: edited)
+        }
+        let removed = Set(messages[index...].map(\.id))
+        for stored in conversation.orderedMessages where removed.contains(stored.id) {
+            store.remove(stored, from: conversation)
+        }
+        messages.removeSubrange(index...)
+        let user = store.append(.user, text: edited, to: conversation)
+        messages.append(user.chatMessage)
+        status = .idle
         startReply()
     }
 
@@ -172,6 +202,8 @@ final class ChatViewModel {
         let name = model?.displayName ?? modelAlias
         var meter = ReplyStatsMeter()
         var loadMs: Int?
+        /// How far a download got, for "Download Interrupted at 412 MB of 1 GB".
+        var lastProgress: DownloadProgress?
         // The Dynamic Island, shown only if the model has to download or load.
         var island: LiveActivityTracker?
         defer { liveTokensPerSecond = nil }
@@ -182,6 +214,7 @@ final class ChatViewModel {
             var hadToLoad = false
             backendLabel = try await ModelPreparer(services: services, device: device).prepare(modelAlias) { [self] phase in
                 hadToLoad = true
+                if case .downloading(let progress) = phase { lastProgress = progress }
                 // Downloads have the coordinator's Dynamic Island (it keeps
                 // going if you leave the chat); loading gets the chat's.
                 if case .loading = phase {
@@ -221,16 +254,17 @@ final class ChatViewModel {
                 }
             }
             attach(meter.stats(model: modelAlias, backend: backendLabel, loadMs: loadMs), to: reply)
-            finishTurn(reply: reply, error: nil)
+            finishTurn(reply: reply, problem: nil)
         } catch {
-            if error is CancellationError {
-                island?.finish(detail: "Stopped")
+            let problem = error is CancellationError ? nil : AppProblem.current(error, model: name, progress: lastProgress)
+            if let problem {
+                island?.fail(problem.title)
             } else {
-                island?.fail(String(describing: error))
+                island?.finish(detail: "Stopped")
             }
             // A reply stopped or failed part-way keeps the stats of what arrived.
             attach(meter.stats(model: modelAlias, backend: backendLabel, loadMs: loadMs), to: reply)
-            finishTurn(reply: reply, error: error)
+            finishTurn(reply: reply, problem: problem)
         }
     }
 
@@ -292,7 +326,7 @@ final class ChatViewModel {
         }
     }
 
-    private func finishTurn(reply: StoredMessage, error: (any Error)?) {
+    private func finishTurn(reply: StoredMessage, problem: AppProblem?) {
         guard currentReplyID == reply.id else { return }
         currentReplyID = nil
         // A reply stopped or failed before its first token leaves no bubble.
@@ -303,13 +337,9 @@ final class ChatViewModel {
             store.touch(conversation)
         }
         device.refreshMemory()
-        if let error, !(error is CancellationError) {
-            if case ChatViewModelError.wontFit(let message) = error {
-                status = .failed(message)
-            } else {
-                // SapientError isn't a LocalizedError; its description carries the reason.
-                status = .failed(String(describing: error))
-            }
+        if let problem {
+            status = .failed(problem)
+            alert = problem
         } else {
             status = .idle
         }

@@ -26,6 +26,10 @@ final class ChatListViewModel {
     /// The model manager, kept for the app's lifetime so downloads and
     /// loads carry on (and still show progress) after its screen closes.
     let models: ModelManagerViewModel
+    /// Shown once at launch when iOS ended the app while it loaded a model.
+    var launchProblem: AppProblem?
+    /// The model `launchProblem` is about, for Try Again.
+    @ObservationIgnored private var launchProblemModel: String?
     /// The Benchmark tab's two modes; kept so results survive tab switches.
     let benchmark: BenchmarkViewModel
     let compare: CompareViewModel
@@ -58,6 +62,11 @@ final class ChatListViewModel {
         ) { [device] _ in device.refreshMemory() }
         compare = CompareViewModel(services: services, device: device, initialModel: firstModel, liveActivities: liveActivities)
         refresh()
+        if let alias = services.memoryLedger.takeLoadThatEndedTheApp() {
+            let name = catalog.first { $0.alias == alias }?.displayName ?? alias
+            launchProblem = .closedWhileLoading(model: name)
+            launchProblemModel = alias
+        }
         models.beforeUnloadAll = { [weak self] in
             self?.activeChat?.stop()
             self?.benchmark.cancel()
@@ -124,6 +133,15 @@ final class ChatListViewModel {
 
     /// iOS forbids GPU work in the background: stop whatever is generating
     /// (a chat reply, a benchmark, a comparison) when the app leaves.
+    /// Loads the model iOS ended the app over, now planned at its real size
+    /// (idle models released first, or a clear "won't fit").
+    func retryLaunchProblem() {
+        guard let alias = launchProblemModel else { return }
+        launchProblemModel = nil
+        selectedTab = .models
+        models.load(alias: alias)
+    }
+
     func appDidLeaveForeground() {
         // Downloads keep going in the background; replies and benchmarks stop.
         services.downloadCoordinator.appMovedToBackground()

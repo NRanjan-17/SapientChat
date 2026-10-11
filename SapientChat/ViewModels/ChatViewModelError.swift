@@ -5,4 +5,6 @@
 nonisolated enum ChatViewModelError: Error {
     /// The model is estimated not to fit in the memory iOS allows.
     case wontFit(String)
+    /// It would fit only by releasing a model that's answering right now.
+    case busy(String)
 }

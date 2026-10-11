@@ -58,6 +58,7 @@ struct CompareView: View {
                 )
             }
         }
+        .problemAlert($viewModel.alert) { _ in viewModel.run() }
     }
 }
 

@@ -212,8 +212,14 @@ func makeServices(
         chat: chat, benchmark: benchmark, catalog: FixedCatalog(),
         thermal: SilentThermalService(), memory: memory, storage: storage,
         downloads: downloads ?? FakeDownloader(storage: storage),
-        contextWindows: contextWindows
+        contextWindows: contextWindows,
+        memoryLedger: makeMemoryLedger()
     )
+}
+
+/// A memory ledger of its own, so tests never touch the app's settings.
+func makeMemoryLedger() -> ModelMemoryLedger {
+    ModelMemoryLedger(defaults: UserDefaults(suiteName: "memory-ledger-\(UUID().uuidString)")!)
 }
 
 /// A context window store of its own, so tests never touch the app's settings.

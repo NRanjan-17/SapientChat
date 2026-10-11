@@ -26,6 +26,12 @@ nonisolated struct ServeErrorBody: Codable, Sendable {
         ServeErrorBody(error: Detail(message: message, type: "invalid_request_error", code: "model_not_found"))
     }
 
+    /// A download or load problem: its message says what to do next, and
+    /// `code` (e.g. "no_network", "storage_full") lets a client act on it.
+    static func problem(_ problem: AppProblem) -> ServeErrorBody {
+        ServeErrorBody(error: Detail(message: problem.summary, type: "model_unavailable", code: problem.code))
+    }
+
     static func server(_ message: String) -> ServeErrorBody {
         ServeErrorBody(error: Detail(message: message, type: "server_error"))
     }
@@ -274,4 +280,19 @@ nonisolated struct DeviceHealth: Codable, Sendable {
     let availableBytes: UInt64?
     /// "nominal", "fair", "serious" or "critical".
     let thermal: String
+}
+
+extension AppProblem {
+    /// The HTTP status an API response for this problem carries.
+    var httpStatus: Int {
+        switch kind {
+        case .noNetwork, .hubUnreachable, .hubError, .interrupted, .downloadFailed: 502
+        case .rateLimited: 429
+        case .accessDenied: 403
+        case .notFound: 404
+        case .storageFull, .notEnoughMemory: 507
+        case .memoryBusy, .modelReleased, .closedWhileLoading: 503
+        case .loadFailed: 500
+        }
+    }
 }

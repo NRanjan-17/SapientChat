@@ -16,6 +16,8 @@ actor SapientChatService: ChatService {
     /// the Swift consumer by a token after a stop, so later work waits for it.
     private var generation: Task<Void, Never>?
     private let contextWindows: ContextWindowStore
+    /// Replies and benchmarks running or queued, per model.
+    private var inUse: [String: Int] = [:]
     /// The backend each loaded model was loaded on.
     private var backends: [String: String] = [:]
     /// For each model's format: Automatic picks CPU + GPU only for memory-mapped ones.
@@ -87,6 +89,21 @@ actor SapientChatService: ChatService {
         slots.models
     }
 
+    func busyModels() -> Set<String> {
+        Set(inUse.filter { $0.value > 0 }.keys)
+    }
+
+    /// Marks `model` in use until the returned call is made.
+    func use(_ model: String) -> @Sendable () async -> Void {
+        inUse[model, default: 0] += 1
+        return { [weak self] in await self?.release(model) }
+    }
+
+    private func release(_ model: String) {
+        inUse[model, default: 1] -= 1
+        if inUse[model] == 0 { inUse[model] = nil }
+    }
+
     func unload(model: String) async {
         await generation?.value
         slots.remove(model)
@@ -109,6 +126,7 @@ actor SapientChatService: ChatService {
         let messages = history.map { Message(role: $0.role.rawValue, content: $0.text) }
         let (stream, continuation) = AsyncThrowingStream<String, any Error>.makeStream()
         let listener = StreamListener(continuation: continuation)
+        let done = use(model)
         enqueueGeneration {
             do {
                 _ = try await session.chatMessagesStream(messages: messages, listener: listener)
@@ -116,6 +134,7 @@ actor SapientChatService: ChatService {
             } catch {
                 continuation.finish(throwing: error)
             }
+            await done()
         }
         return stream
     }

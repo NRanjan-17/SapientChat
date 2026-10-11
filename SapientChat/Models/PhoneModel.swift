@@ -70,14 +70,16 @@ nonisolated struct PhoneModel: Identifiable, Hashable, Sendable {
     /// what the app may still allocate (nil = no known limit, e.g. the
     /// simulator); `reclaimableBytes` is memory that loading frees first
     /// (the model being replaced).
-    func fitProblem(availableBytes: UInt64?, reclaimableBytes: UInt64 = 0) -> String? {
+    /// `requiredBytes` overrides the estimate (e.g. what it really took).
+    func fitProblem(availableBytes: UInt64?, reclaimableBytes: UInt64 = 0, requiredBytes: UInt64? = nil) -> String? {
         guard let availableBytes else { return nil }
+        let required = requiredBytes ?? estimatedMemoryBytes
         let headroom = availableBytes > .max - reclaimableBytes ? .max : availableBytes + reclaimableBytes
-        guard estimatedMemoryBytes > headroom else { return nil }
-        let need = Int64(clamping: estimatedMemoryBytes).formatted(.byteCount(style: .memory))
+        guard required > headroom else { return nil }
+        let need = Int64(clamping: required).formatted(.byteCount(style: .memory))
         let have = Int64(clamping: headroom).formatted(.byteCount(style: .memory))
-        return "\(alias) needs about \(need), but iOS lets this app use about \(have) more. "
-            + "Pick a smaller model or its Q4 build."
+        return "\(displayName) needs about \(need), but iOS lets SapientChat use only about \(have) more, even after releasing idle models. "
+            + "Pick a smaller model or its 4-bit (Q4) version, or close other apps and tap Try Again."
     }
 
     /// "135M Q4_K_M" → 0.135, "1.5B" → 1.5. Returns nil for anything else,

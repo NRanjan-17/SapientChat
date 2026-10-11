@@ -22,8 +22,10 @@ extension SapientChatService: BenchmarkService {
             runs: UInt32(settings.runs),
             warmup: UInt32(settings.warmup)
         )
+        let done = use(model)
         let run = enqueueGeneration {
-            try await session.benchmarkAsync(options: options, listener: listener)
+            defer { Task { await done() } }
+            return try await session.benchmarkAsync(options: options, listener: listener)
         }
         let report = try await withTaskCancellationHandler {
             try await run.value

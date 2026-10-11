@@ -35,13 +35,19 @@ struct ModelStatusCard: View {
                         .font(.subheadline)
                 }
             }
-        case .failed(let message):
+        case .failed(let problem):
             card {
-                Label(message, systemImage: "exclamationmark.triangle")
+                IconText(problem.title, systemImage: "exclamationmark.triangle.fill")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(.orange)
+                Text(problem.message)
                     .font(.subheadline)
-                    .foregroundStyle(.red)
-                Button("Retry", systemImage: "arrow.clockwise", action: onRetry)
-                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if problem.canRetry {
+                    Button(problem.retryTitle, systemImage: "arrow.clockwise", action: onRetry)
+                        .font(.subheadline.bold())
+                        .buttonStyle(.bordered)
+                }
             }
         case .idle, .generating:
             EmptyView()
@@ -62,6 +68,6 @@ struct ModelStatusCard: View {
     VStack {
         ModelStatusCard(status: .downloading(model: "smollm2-1.7b", progress: DownloadProgress(downloadedBytes: 412_000_000, totalBytes: 1_060_000_000)), onCancel: {}, onRetry: {})
         ModelStatusCard(status: .loading(model: "smollm2-1.7b"), onCancel: {}, onRetry: {})
-        ModelStatusCard(status: .failed("smollm2-1.7b needs about 2.8 GB."), onCancel: {}, onRetry: {})
+        ModelStatusCard(status: .failed(.classify("dns error: failed to lookup address", model: "smollm2-1.7b")), onCancel: {}, onRetry: {})
     }
 }

@@ -216,8 +216,9 @@ final class ServeRouter {
                 activity?.finish(detail: "Downloaded")
                 return .json(ModelActionResponse(model: alias, status: "downloaded", residentModels: await services.chat.loadedModels()))
             } catch {
-                activity?.fail(Self.describe(error))
-                return .json(ServeErrorBody.server(Self.describe(error)), status: 500)
+                let problem = AppProblem.current(error, model: model.displayName)
+                activity?.fail(problem.title)
+                return .json(ServeErrorBody.problem(problem), status: problem.httpStatus)
             }
         }
         let (events, continuation) = AsyncThrowingStream<DownloadEvent, any Error>.makeStream()
@@ -244,8 +245,9 @@ final class ServeRouter {
                 continuation.finish()
                 activity?.finish(detail: "Downloaded")
             } catch {
-                activity?.fail(Self.describe(error))
-                continuation.finish(throwing: error)
+                let problem = error is CancellationError ? nil : AppProblem.current(error, model: model.displayName)
+                activity?.fail(problem?.title ?? "Stopped")
+                continuation.finish(throwing: problem ?? error)
             }
             reportPhase?(alias, nil)
         }
@@ -497,6 +499,8 @@ final class ServeRouter {
             do {
                 for try await event in events { continuation.yield(frame(event)) }
             } catch is CancellationError {
+            } catch let problem as AppProblem {
+                continuation.yield(APIJSON.event(ServeErrorBody.problem(problem)))
             } catch {
                 continuation.yield(APIJSON.event(ServeErrorBody.server(Self.describe(error))))
             }
@@ -555,12 +559,10 @@ final class ServeRouter {
                 onModelPhase?(alias, phase)
             }
             return .success((model, backend))
-        } catch ChatViewModelError.wontFit(let message) {
-            activity?.fail(message)
-            return .failure(Failure(response: .json(ServeErrorBody.server(message), status: 500)))
         } catch {
-            activity?.fail(Self.describe(error))
-            return .failure(Failure(response: .json(ServeErrorBody.server(Self.describe(error)), status: 500)))
+            let problem = AppProblem.current(error, model: model.displayName)
+            activity?.fail(problem.title)
+            return .failure(Failure(response: .json(ServeErrorBody.problem(problem), status: problem.httpStatus)))
         }
     }
 

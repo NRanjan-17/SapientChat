@@ -124,6 +124,7 @@ struct ModelManagerView: View {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete All", role: .destructive, action: deleteAll)
             }
+            .problemAlert($viewModel.problem) { _ in viewModel.retry() }
             .alert("Model", isPresented: $viewModel.errorMessage.isPresent) {
                 Button("OK", role: .cancel) {}
             } message: {

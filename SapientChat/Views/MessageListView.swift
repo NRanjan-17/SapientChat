@@ -9,6 +9,13 @@ struct MessageListView: View {
     let messages: [ChatMessage]
     let canRegenerate: Bool
     let onRegenerate: () -> Void
+    var canEdit = false
+    /// Replaces one of your messages and answers again from there.
+    var onEdit: (UUID, String) -> Void = { _, _ in }
+
+    /// Your message being edited in place, and its draft.
+    @State private var editingID: UUID?
+    @State private var editDraft = ""
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(AppSettings.showReplyStats) private var showReplyStats = true
@@ -24,11 +31,20 @@ struct MessageListView: View {
                             .transition(.opacity)
                     } else {
                         VStack(alignment: .leading, spacing: 4) {
-                            MessageBubble(
-                                message: message,
-                                canRegenerate: canRegenerate && message.id == messages.last?.id,
-                                onRegenerate: onRegenerate
-                            )
+                            if editingID == message.id {
+                                MessageEditor(text: $editDraft, onCancel: stopEditing) {
+                                    let id = message.id
+                                    stopEditing()
+                                    onEdit(id, editDraft)
+                                }
+                            } else {
+                                MessageBubble(
+                                    message: message,
+                                    canRegenerate: canRegenerate && message.id == messages.last?.id,
+                                    onRegenerate: onRegenerate,
+                                    onEdit: canEdit && message.role == .user ? { startEditing(message) } : nil
+                                )
+                            }
                             if showReplyStats, let stats = message.stats {
                                 ReplyStatsLine(stats: stats)
                                     // Under the reply's text: plain on iPad, inset in a bubble.
@@ -49,6 +65,15 @@ struct MessageListView: View {
         .defaultScrollAnchor(.bottom)
         .defaultScrollAnchor(.bottom, for: .sizeChanges)
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    private func startEditing(_ message: ChatMessage) {
+        editDraft = message.text
+        editingID = message.id
+    }
+
+    private func stopEditing() {
+        editingID = nil
     }
 
     /// Your messages rise from the composer; replies fade in. Reduce Motion

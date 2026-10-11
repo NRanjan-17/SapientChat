@@ -37,6 +37,7 @@ struct RootView: View {
         .onOpenURL { url in
             if HandoffViewModel.handles(url) { viewModel.handoff.open(url) }
         }
+        .problemAlert($viewModel.launchProblem) { _ in viewModel.retryLaunchProblem() }
         .task { await viewModel.device.observeThermal() }
         .onAppear(perform: restoreTab)
         .onChange(of: viewModel.selectedTab) { _, tab in

@@ -34,6 +34,10 @@ final class ModelManagerViewModel: Identifiable {
     private(set) var loaded: [String] = []
     private(set) var totalDownloadBytes: UInt64 = 0
     var errorMessage: String?
+    /// A download or load that failed, as a pop-up with Try Again.
+    var problem: AppProblem?
+    /// Runs the failed action again.
+    @ObservationIgnored private var retryProblem: (() -> Void)?
     /// Why a model was just released, e.g. to make room for another.
     var notice: String?
     let device: DeviceStatus
@@ -102,7 +106,11 @@ final class ModelManagerViewModel: Identifiable {
     /// Downloads if needed and loads into memory (releasing the least
     /// recently used model if every slot is taken or memory is short).
     func load(_ row: Row) {
-        let alias = row.model.alias
+        load(alias: row.model.alias)
+    }
+
+    /// Loads `alias` (e.g. trying again after iOS ended the app loading it).
+    func load(alias: String) {
         run(alias, done: "Loaded") { [self] in
             _ = try await prepare(alias)
         }
@@ -230,6 +238,13 @@ final class ModelManagerViewModel: Identifiable {
         return "To load \(loading), released \(names) to make room in memory.\(room)"
     }
 
+    /// Tries the failed download or load again.
+    func retry() {
+        let action = retryProblem
+        retryProblem = nil
+        action?()
+    }
+
     /// Runs one task per model; the row shows its activity until it ends.
     private func run(_ alias: String, done: String = "Ready", _ work: @escaping () async throws -> Void) {
         guard tasks[alias] == nil else { return }
@@ -240,12 +255,13 @@ final class ModelManagerViewModel: Identifiable {
             } catch is CancellationError {
                 // Cancelled by the user; partial downloads resume next time.
                 self?.islands[alias]?.finish(detail: "Cancelled")
-            } catch ChatViewModelError.wontFit(let message) {
-                self?.errorMessage = message
-                self?.islands[alias]?.fail(message)
             } catch {
-                self?.errorMessage = String(describing: error)
-                self?.islands[alias]?.fail(String(describing: error))
+                guard let self else { return }
+                let progress: DownloadProgress? = if case .downloading(let p) = activities[alias] { p } else { nil }
+                let problem = AppProblem.current(error, model: displayName(of: alias), progress: progress)
+                self.problem = problem
+                retryProblem = { [weak self] in self?.run(alias, done: done, work) }
+                islands[alias]?.fail(problem.title)
             }
             self?.islands[alias] = nil
             self?.finish(alias)

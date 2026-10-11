@@ -16,6 +16,10 @@ nonisolated protocol ChatService: Sendable {
     /// Doesn't count as using it.
     func details(model: String) async -> LoadedModelDetails?
 
+    /// Loaded models answering (or queued to) right now; these are never
+    /// released to make room for another.
+    func busyModels() async -> Set<String>
+
     /// Releases one model's memory.
     func unload(model: String) async
 
@@ -27,4 +31,8 @@ nonisolated protocol ChatService: Sendable {
     /// the engine's prefix cache keeps re-sent history cheap. Cancelling the
     /// consuming task stops generation.
     func reply(to history: [ChatMessage], model: String) async throws -> AsyncThrowingStream<String, any Error>
+}
+
+extension ChatService {
+    func busyModels() async -> Set<String> { [] }
 }

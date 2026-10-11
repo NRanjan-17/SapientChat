@@ -80,7 +80,7 @@ struct ModelManagerViewModelTests {
         let big = try #require(row(TestModels.big, in: manager))
         #expect(!big.fits)
         manager.load(big)
-        #expect(await eventually { manager.errorMessage?.contains("smollm2-1.7b") == true })
+        #expect(await eventually { manager.problem?.kind == .notEnoughMemory && manager.problem?.message.contains("smollm2-1.7b") == true })
         #expect(await service.loadedModels().isEmpty)
     }
 

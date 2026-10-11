@@ -4,11 +4,13 @@
 import SwiftUI
 
 /// One message. Replies render Markdown (bold, italics, code, links) and
-/// keep line breaks; long-press to copy or regenerate.
+/// keep line breaks; long-press to copy, regenerate, or edit your message.
 struct MessageBubble: View {
     let message: ChatMessage
     var canRegenerate = false
     var onRegenerate: () -> Void = {}
+    /// Set for your own messages while editing is allowed.
+    var onEdit: (() -> Void)?
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -31,6 +33,9 @@ struct MessageBubble: View {
             .padding(isUser ? .leading : .trailing, isPlainReply ? 0 : 40)
             .contextMenu {
                 Button("Copy", systemImage: "doc.on.doc", action: copy)
+                if let onEdit {
+                    Button("Edit", systemImage: "pencil", action: onEdit)
+                }
                 if canRegenerate {
                     Button(isUser ? "Retry" : "Regenerate", systemImage: "arrow.clockwise", action: onRegenerate)
                 }

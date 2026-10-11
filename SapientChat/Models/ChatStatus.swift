@@ -9,5 +9,6 @@ nonisolated enum ChatStatus: Equatable, Sendable {
     /// Loading the model into memory.
     case loading(model: String)
     case generating
-    case failed(String)
+    /// It couldn't download, load or answer; says what to do next.
+    case failed(AppProblem)
 }

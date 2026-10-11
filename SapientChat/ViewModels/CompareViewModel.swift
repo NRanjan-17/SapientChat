@@ -25,6 +25,8 @@ final class CompareViewModel: Identifiable {
     var settings = BenchmarkSettings(maxTokens: 128, runs: 2, warmup: 1)
     private(set) var results: [ModelComparison] = []
     private(set) var phase: Phase = .idle
+    /// A model that couldn't be readied, as a pop-up with Try Again.
+    var alert: AppProblem?
 
     @ObservationIgnored private let services: AppServices
     @ObservationIgnored private let device: DeviceStatus
@@ -87,20 +89,21 @@ final class CompareViewModel: Identifiable {
         phase = .running("Starting…")
         task = Task { [weak self] in
             guard let self else { return }
+            var currentAlias: String?
             do {
                 for (index, alias) in lineup.enumerated() {
+                    currentAlias = alias
                     try await compare(alias, at: index, prompt: prompt, settings: settings)
                 }
                 phase = .finished
             } catch is CancellationError {
                 activity?.finish(detail: "Stopped")
                 phase = .idle
-            } catch ChatViewModelError.wontFit(let message) {
-                activity?.fail(message)
-                phase = .failed(message)
             } catch {
-                activity?.fail(String(describing: error))
-                phase = .failed(String(describing: error))
+                let problem = AppProblem.current(error, model: displayName(of: currentAlias ?? ""))
+                activity?.fail(problem.title)
+                phase = .failed(problem.summary)
+                alert = problem
             }
             activity = nil
             device.refreshMemory()

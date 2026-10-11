@@ -103,7 +103,7 @@ struct ChatViewModelTests {
         send("Hi", in: chat)
 
         #expect(await eventually {
-            if case .failed(let message) = chat.status { message.contains("smollm2-1.7b") } else { false }
+            if case .failed(let problem) = chat.status { problem.message.contains("smollm2-1.7b") } else { false }
         })
         #expect(chat.messages.map(\.text) == ["Hi"])
         #expect(await service.loadedModels.isEmpty, "nothing was loaded")
@@ -208,5 +208,86 @@ struct PhoneModelTests {
         #expect(TestModels.small.displayName == "smollm2-135m-q4")
         #expect(TestModels.small.format == "4-bit")
         #expect(TestModels.big.format == "Full precision")
+    }
+}
+
+/// A downloader that fails the way SAPIENT does with no network.
+struct OfflineDownloader: ModelDownloadService {
+    struct EngineError: Error, CustomStringConvertible {
+        var description: String { #"Load(reason: "Failed to download model 'm': client error (Connect): dns error: failed to lookup address information")"# }
+    }
+    func download(model: String, onProgress: @escaping @Sendable (DownloadProgress) -> Void) async throws { throw EngineError() }
+    func downloadSize(model: String) async throws -> UInt64 { 0 }
+}
+
+@MainActor
+struct ChatEditAndProblemTests {
+    let container: ModelContainer
+    let store: SwiftDataConversationStore
+    let service = ControlledChatService()
+
+    init() throws {
+        container = try makeContainer()
+        store = SwiftDataConversationStore(context: container.mainContext)
+    }
+
+    private func makeChat(storage: FakeStorage = downloadedStorage(), downloads: (any ModelDownloadService)? = nil) -> ChatViewModel {
+        let services = makeServices(chat: service, storage: storage, downloads: downloads)
+        let conversation = store.createConversation(model: TestModels.small.alias)
+        let device = DeviceStatus(memoryService: FixedMemory(), thermalService: SilentThermalService())
+        return ChatViewModel(conversation: conversation, services: services, store: store, device: device, saveInterval: .seconds(60))
+    }
+
+    @Test func aFailedDownloadPopsUpWhatToDo() async throws {
+        let chat = makeChat(storage: FakeStorage(), downloads: OfflineDownloader())
+        chat.draft = "Hi"
+        chat.send()
+        #expect(await eventually { chat.alert != nil })
+        #expect(chat.alert?.kind == .noNetwork)
+        #expect(chat.alert?.message.contains("tap Try Again") == true)
+        if case .failed(let problem) = chat.status { #expect(problem.kind == .noNetwork) } else { Issue.record("expected failed") }
+        #expect(chat.messages.map(\.text) == ["Hi"], "the prompt stays for Try Again")
+    }
+
+    @Test func editingAPromptReplacesItAndEverythingAfter() async throws {
+        let chat = makeChat()
+        chat.draft = "What is 2+2?"
+        chat.send()
+        #expect(await eventually { await service.replyCount == 1 })
+        await service.send("4", toReply: 0)
+        await service.finishReply(0)
+        #expect(await eventually { chat.status == .idle })
+        chat.draft = "And 3+3?"
+        chat.send()
+        #expect(await eventually { await service.replyCount == 2 })
+        await service.send("6", toReply: 1)
+        await service.finishReply(1)
+        #expect(await eventually { chat.status == .idle })
+
+        let first = try #require(chat.messages.first)
+        chat.edit(first.id, to: "What is 5+5?")
+        #expect(await eventually { await service.replyCount == 3 })
+        #expect(await service.histories.last?.map(\.text) == ["What is 5+5?"], "the model sees only the edited prompt")
+        await service.send("10", toReply: 2)
+        await service.finishReply(2)
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["What is 5+5?", "10"])
+        #expect(chat.conversation.orderedMessages.map(\.text) == ["What is 5+5?", "10"])
+        #expect(chat.conversation.title == "What is 5+5?", "the title follows the edited first message")
+    }
+
+    @Test func repliesCantBeEditedAndNothingIsEditedWhileBusy() async throws {
+        let chat = makeChat()
+        chat.draft = "Hi"
+        chat.send()
+        #expect(await eventually { await service.replyCount == 1 })
+        #expect(!chat.canEdit)
+        chat.edit(chat.messages[0].id, to: "Changed")
+        #expect(chat.messages[0].text == "Hi", "ignored while a reply is running")
+        await service.send("Hello", toReply: 0)
+        await service.finishReply(0)
+        #expect(await eventually { chat.status == .idle })
+        chat.edit(chat.messages[1].id, to: "Not mine")
+        #expect(chat.messages.map(\.text) == ["Hi", "Hello"], "only your own messages can be edited")
     }
 }
