@@ -9,7 +9,7 @@ struct ChatView: View {
     let list: ChatListViewModel
     @State private var modelSelector: ModelSelectorViewModel?
     @State private var isShowingStats = false
-    @State private var isShowingContextWindow = false
+    @State private var isShowingSettings = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
@@ -50,8 +50,8 @@ struct ChatView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button("Change Model…", systemImage: "square.stack.3d.up", action: openModelSelector)
-                    if let model = viewModel.model, ContextWindowStore.isAdjustable(model) {
-                        Button("Context Window…", systemImage: "text.alignleft", action: showContextWindow)
+                    if viewModel.model != nil {
+                        Button("Model Settings…", systemImage: "slider.horizontal.3", action: showSettings)
                     }
                 } label: {
                     Label(viewModel.modelName, systemImage: "square.stack.3d.up")
@@ -73,20 +73,21 @@ struct ChatView: View {
         .sheet(isPresented: $isShowingStats) {
             ModelStatsSheet(viewModel: viewModel)
         }
-        .sheet(isPresented: $isShowingContextWindow) {
+        .sheet(isPresented: $isShowingSettings) {
             if let model = viewModel.model {
-                ContextWindowSheet(
+                ModelSettingsSheet(
                     model: model,
-                    current: viewModel.contextWindow,
+                    temperature: viewModel.temperature,
+                    contextWindow: viewModel.contextWindow,
                     isLoaded: viewModel.modelDetails != nil,
-                    onSave: viewModel.setContextWindow
+                    onSave: viewModel.setSettings
                 )
             }
         }
     }
 
-    private func showContextWindow() {
-        isShowingContextWindow = true
+    private func showSettings() {
+        isShowingSettings = true
         Task { await viewModel.refreshModelDetails() }
     }
 

@@ -206,15 +206,22 @@ func makeServices(
     memory: FixedMemory = FixedMemory(),
     storage: FakeStorage = downloadedStorage(),
     downloads: (any ModelDownloadService)? = nil,
-    contextWindows: ContextWindowStore = makeContextWindowStore()
+    contextWindows: ContextWindowStore = makeContextWindowStore(),
+    temperatures: TemperatureStore = makeTemperatureStore()
 ) -> AppServices {
     AppServices(
         chat: chat, benchmark: benchmark, catalog: FixedCatalog(),
         thermal: SilentThermalService(), memory: memory, storage: storage,
         downloads: downloads ?? FakeDownloader(storage: storage),
         contextWindows: contextWindows,
+        temperatures: temperatures,
         memoryLedger: makeMemoryLedger()
     )
+}
+
+/// A temperature store of its own, so tests never touch the app's settings.
+func makeTemperatureStore() -> TemperatureStore {
+    TemperatureStore(defaults: UserDefaults(suiteName: "temperatures-\(UUID().uuidString)")!)
 }
 
 /// A memory ledger of its own, so tests never touch the app's settings.

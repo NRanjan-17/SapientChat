@@ -68,10 +68,8 @@ struct ModelManagerMenuItems: View {
                     actions.download(row)
                 }
             }
-            if ContextWindowStore.isAdjustable(row.model) {
-                Button("Context Window…", systemImage: "text.alignleft") { actions.contextWindow(row) }
-                    .disabled(row.activity != nil)
-            }
+            Button("Model Settings…", systemImage: "slider.horizontal.3") { actions.settings(row) }
+                .disabled(row.activity != nil)
             if row.canDelete {
                 Divider()
                 Button("Delete Download", systemImage: "trash", role: .destructive) { actions.delete(row) }

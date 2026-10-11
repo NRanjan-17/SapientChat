@@ -14,7 +14,8 @@ struct ModelManagerRow: View {
         let unload: (ModelManagerViewModel.Row) -> Void
         let startChat: (ModelManagerViewModel.Row) -> Void
         let delete: (ModelManagerViewModel.Row) -> Void
-        let contextWindow: (ModelManagerViewModel.Row) -> Void
+        /// Opens Model Settings (temperature, context window).
+        let settings: (ModelManagerViewModel.Row) -> Void
     }
 
     let row: ModelManagerViewModel.Row
@@ -33,13 +34,13 @@ struct ModelManagerRow: View {
                 }
                 ModelSpecChips(model: row.model)
                 status
-                if ContextWindowStore.isAdjustable(row.model), row.activity == nil {
-                    Button(action: { actions.contextWindow(row) }) {
-                        IconText(contextText, systemImage: "text.alignleft")
+                if row.activity == nil {
+                    Button(action: { actions.settings(row) }) {
+                        IconText(settingsText, systemImage: "slider.horizontal.3")
                             .font(.caption)
                     }
                     .buttonStyle(.borderless)
-                    .accessibilityHint("Changes how much of a conversation the model can see")
+                    .accessibilityHint("Changes the model's temperature and context window")
                 }
             }
             // Separators start under the text, the same for every row.
@@ -56,8 +57,14 @@ struct ModelManagerRow: View {
         .animation(.smooth, value: row.isLoaded)
     }
 
-    private var contextText: String {
-        row.contextWindow.map { "Context: \($0.formatted()) tokens" } ?? "Context: Default"
+    /// "Temperature 0.7 · Context 3,072", the context part only for models
+    /// that can pick one.
+    private var settingsText: String {
+        var parts = ["Temperature \(TemperatureStore.label(row.temperature))"]
+        if ContextWindowStore.isAdjustable(row.model) {
+            parts.append(row.contextWindow.map { "Context \($0.formatted())" } ?? "Context Default")
+        }
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder private var status: some View {

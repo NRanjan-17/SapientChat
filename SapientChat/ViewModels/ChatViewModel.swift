@@ -294,11 +294,27 @@ final class ChatViewModel {
         set { setContextWindow(newValue) }
     }
 
+    /// The temperature picked for this chat's model; nil is greedy (Precise).
+    /// It's the model's setting, shared by every chat using it.
+    var temperature: Double? {
+        get { services.temperatures.temperature(for: conversation.modelAlias) }
+        set { setSettings(temperature: newValue, contextWindow: contextWindow) }
+    }
+
     /// Saves a new context window and, if the model is in memory, reloads
     /// it so the next reply uses it.
     func setContextWindow(_ tokens: Int?) {
+        setSettings(temperature: temperature, contextWindow: tokens)
+    }
+
+    /// Saves the model's temperature and context window; if either changed
+    /// and the model is in memory, reloads it once so the next reply uses them.
+    func setSettings(temperature: Double?, contextWindow tokens: Int?) {
         let alias = conversation.modelAlias
-        guard tokens != services.contextWindows.tokens(for: alias) else { return }
+        let changed = temperature != services.temperatures.temperature(for: alias)
+            || tokens != services.contextWindows.tokens(for: alias)
+        guard changed else { return }
+        services.temperatures.set(temperature, for: alias)
         services.contextWindows.set(tokens, for: alias)
         guard modelDetails != nil else { return }
         Task {

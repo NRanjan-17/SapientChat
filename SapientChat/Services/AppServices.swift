@@ -14,6 +14,8 @@ struct AppServices {
     let downloads: any ModelDownloadService
     /// Per-model context windows the user picked; the engine reads them at load.
     var contextWindows: ContextWindowStore
+    /// Per-model sampling temperatures; the engine reads them at load.
+    var temperatures: TemperatureStore
     /// The Dynamic Island; nothing in tests and previews.
     var liveActivities: any LiveActivityService {
         didSet { downloadCoordinator.liveActivities = liveActivities }
@@ -33,6 +35,7 @@ struct AppServices {
         storage: any ModelStorageService,
         downloads: any ModelDownloadService,
         contextWindows: ContextWindowStore = .standard,
+        temperatures: TemperatureStore = .standard,
         liveActivities: any LiveActivityService = NoLiveActivities(),
         memoryLedger: ModelMemoryLedger = .standard
     ) {
@@ -45,13 +48,14 @@ struct AppServices {
         self.storage = storage
         self.downloads = downloads
         self.contextWindows = contextWindows
+        self.temperatures = temperatures
         self.liveActivities = liveActivities
         downloadCoordinator = DownloadCoordinator(downloads: downloads, catalog: catalog)
         downloadCoordinator.liveActivities = liveActivities
     }
 
     static func live() -> AppServices {
-        let engine = SapientChatService(contextWindows: .standard)
+        let engine = SapientChatService(contextWindows: .standard, temperatures: .standard)
         return AppServices(
             chat: engine,
             benchmark: engine,

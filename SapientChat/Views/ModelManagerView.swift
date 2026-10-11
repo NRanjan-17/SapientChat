@@ -11,7 +11,7 @@ struct ModelManagerView: View {
     @State private var isConfirmingDelete = false
     @State private var isConfirmingDeleteAll = false
     @State private var isConfirmingUnloadAll = false
-    @State private var contextWindowRow: ModelManagerViewModel.Row?
+    @State private var settingsRow: ModelManagerViewModel.Row?
 
     var body: some View {
         NavigationStack {
@@ -80,13 +80,14 @@ struct ModelManagerView: View {
             }
             .readableContentWidth(760)
             .navigationTitle("Models")
-            .sheet(item: $contextWindowRow) { row in
-                ContextWindowSheet(
+            .sheet(item: $settingsRow) { row in
+                ModelSettingsSheet(
                     model: row.model,
-                    current: viewModel.contextWindow(for: row),
+                    temperature: viewModel.temperature(for: row),
+                    contextWindow: viewModel.contextWindow(for: row),
                     isLoaded: row.isLoaded
-                ) { tokens in
-                    viewModel.setContextWindow(tokens, for: row)
+                ) { temperature, tokens in
+                    viewModel.setSettings(temperature: temperature, contextWindow: tokens, for: row)
                 }
             }
             .toolbar {
@@ -146,7 +147,7 @@ struct ModelManagerView: View {
             unload: { row in Task { await viewModel.unload(row) } },
             startChat: viewModel.startChat,
             delete: confirmDelete,
-            contextWindow: { contextWindowRow = $0 }
+            settings: { settingsRow = $0 }
         )
     }
 

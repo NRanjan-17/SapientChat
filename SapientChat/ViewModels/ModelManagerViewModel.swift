@@ -23,6 +23,8 @@ final class ModelManagerViewModel: Identifiable {
         /// The picked context window; nil is the default. Only models of
         /// 1.4B and up can pick one (`ContextWindowStore.isAdjustable`).
         var contextWindow: Int?
+        /// The picked temperature; nil is greedy (Precise).
+        var temperature: Double?
 
         var id: String { model.id }
     }
@@ -88,7 +90,8 @@ final class ModelManagerViewModel: Identifiable {
                 isLoaded: loaded.contains(model.alias),
                 fits: MemoryPlanner.plan(loading: model, loaded: loadedModels, availableBytes: device.memory.availableBytes).fits,
                 activity: activities[model.alias],
-                contextWindow: services.contextWindows.tokens(for: model.alias)
+                contextWindow: services.contextWindows.tokens(for: model.alias),
+                temperature: services.temperatures.temperature(for: model.alias)
             )
         }
         totalDownloadBytes = services.storage.totalDownloadBytes()
@@ -131,10 +134,22 @@ final class ModelManagerViewModel: Identifiable {
         services.contextWindows.tokens(for: row.model.alias)
     }
 
+    /// The temperature picked for `row`'s model; nil is greedy (Precise).
+    func temperature(for row: Row) -> Double? {
+        services.temperatures.temperature(for: row.model.alias)
+    }
+
     /// Saves a new context window, reloading the model if it's in memory.
     func setContextWindow(_ tokens: Int?, for row: Row) {
-        guard tokens != contextWindow(for: row) else { return }
+        setSettings(temperature: temperature(for: row), contextWindow: tokens, for: row)
+    }
+
+    /// Saves the model's temperature and context window, reloading it once
+    /// if it's in memory and either changed.
+    func setSettings(temperature: Double?, contextWindow tokens: Int?, for row: Row) {
+        guard temperature != self.temperature(for: row) || tokens != contextWindow(for: row) else { return }
         let alias = row.model.alias
+        services.temperatures.set(temperature, for: alias)
         services.contextWindows.set(tokens, for: alias)
         Task { await refresh() }
         guard row.isLoaded else { return }
@@ -295,7 +310,7 @@ final class ModelManagerViewModel: Identifiable {
             guard row.model.alias == alias else { return row }
             return Row(
                 model: row.model, download: row.download, isLoaded: row.isLoaded, fits: row.fits,
-                activity: activity, contextWindow: row.contextWindow
+                activity: activity, contextWindow: row.contextWindow, temperature: row.temperature
             )
         }
     }

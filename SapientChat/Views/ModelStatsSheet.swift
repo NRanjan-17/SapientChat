@@ -17,9 +17,13 @@ struct ModelStatsSheet: View {
                     name: viewModel.modelName,
                     details: viewModel.modelDetails
                 )
-                if let model = viewModel.model, ContextWindowStore.isAdjustable(model) {
-                    ContextWindowPicker(model: model, isLoaded: viewModel.modelDetails != nil, tokens: contextWindow)
+                if let model = viewModel.model {
+                    TemperaturePicker(model: model, isLoaded: viewModel.modelDetails != nil, temperature: temperature)
                         .disabled(viewModel.isBusy)
+                    if ContextWindowStore.isAdjustable(model) {
+                        ContextWindowPicker(model: model, isLoaded: viewModel.modelDetails != nil, tokens: contextWindow)
+                            .disabled(viewModel.isBusy)
+                    }
                 }
                 ModelStatsDeviceSection(device: viewModel.device, loadedModels: viewModel.loadedModelNames)
                 ModelStatsChatSection(summary: viewModel.chatSummary, last: viewModel.lastReplyStats)
@@ -35,6 +39,10 @@ struct ModelStatsSheet: View {
             .refreshable { await viewModel.refreshModelDetails() }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private var temperature: Binding<Double?> {
+        Binding { viewModel.temperature } set: { viewModel.temperature = $0 }
     }
 
     private var contextWindow: Binding<Int?> {

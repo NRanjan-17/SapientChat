@@ -16,6 +16,7 @@ actor SapientChatService: ChatService {
     /// the Swift consumer by a token after a stop, so later work waits for it.
     private var generation: Task<Void, Never>?
     private let contextWindows: ContextWindowStore
+    private let temperatures: TemperatureStore
     /// Replies and benchmarks running or queued, per model.
     private var inUse: [String: Int] = [:]
     /// The backend each loaded model was loaded on.
@@ -26,9 +27,11 @@ actor SapientChatService: ChatService {
     init(
         cacheDirectory: URL = .cachesDirectory.appending(path: "sapient"),
         contextWindows: ContextWindowStore = .standard,
+        temperatures: TemperatureStore = .standard,
         catalog: any ModelCatalogService = SapientModelCatalog()
     ) {
         self.contextWindows = contextWindows
+        self.temperatures = temperatures
         self.catalog = catalog
         // Keep model downloads inside the app sandbox so the OS can reclaim
         // them and uninstalling the app removes them.
@@ -61,12 +64,17 @@ actor SapientChatService: ChatService {
             slots.remove(leastRecent)
             backends[leastRecent] = nil
         }
-        // Greedy decoding (no sampling fields set): deterministic, the right
-        // default for small models. The context window is the user's pick for
+        // Greedy decoding (no sampling fields set) unless the user picked a
+        // temperature for this model: deterministic, the right default for
+        // small models. The context window is the user's pick for
         // this model, else the engine's (3072 tokens for models above 1.5B on
         // a phone, 8192 otherwise).
         var options = GenerationOptions(maxTokens: 512)
         options.contextLength = contextWindows.tokens(for: model).map(UInt32.init)
+        if let temperature = temperatures.temperature(for: model) {
+            options.temperature = Float(temperature)
+            options.topP = TemperatureStore.topP
+        }
         // Compute setting: CPU + GPU by default, the GPU alone when hot or in
         // Low Power Mode, the CPU while serving in the background.
         options.backend = backend
