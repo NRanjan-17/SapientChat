@@ -93,7 +93,18 @@ final class ChatListViewModel {
     }
 
     /// A new chat using `model` (e.g. one just loaded in the model manager).
+    /// A chat that never got a message is reused, so tapping New Chat
+    /// twice doesn't leave empty chats in the list.
     func newChat(model: String) {
+        if let empty = conversations.first(where: \.messages.isEmpty) {
+            if empty.modelAlias != model {
+                empty.modelAlias = model
+            }
+            store.touch(empty)
+            refresh()
+            selectedID = empty.id
+            return
+        }
         let conversation = store.createConversation(model: model)
         refresh()
         selectedID = conversation.id

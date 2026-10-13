@@ -6,6 +6,10 @@ import SwiftUI
 /// A new chat: what runs it and a few prompts to start with.
 struct EmptyChatView: View {
     let modelName: String
+    var model: PhoneModel?
+    var download: ModelDownload?
+    var canChangeModel = true
+    var onChangeModel: () -> Void = {}
     let onSuggestion: (String) -> Void
 
     static let suggestions = [
@@ -20,7 +24,11 @@ struct EmptyChatView: View {
                 ContentUnavailableView {
                     Label("Chat with \(modelName)", systemImage: "sparkles")
                 } description: {
-                    Text("Everything runs on this iPhone. Nothing you type leaves the device.")
+                    Text("Everything runs on this \(UIDevice.current.model). Nothing you type leaves the device.")
+                }
+                if let model {
+                    modelCard(model)
+                        .padding(.horizontal)
                 }
                 VStack(spacing: 10) {
                     ForEach(Self.suggestions, id: \.self) { suggestion in
@@ -33,6 +41,36 @@ struct EmptyChatView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .readableContentWidth(640)
+    }
+
+    /// Which model answers and what the first message costs, with a way to
+    /// pick another before anything downloads.
+    private func modelCard(_ model: PhoneModel) -> some View {
+        HStack(spacing: 12) {
+            ModelTile(model: model, size: 40)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(model.displayName)
+                    .font(.headline)
+                Text(downloadText(for: model))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Button("Change", action: onChangeModel)
+                .buttonStyle(.bordered)
+                .disabled(!canChangeModel)
+                .accessibilityLabel("Change Model")
+        }
+        .padding(12)
+        .background(.fill.quaternary, in: .rect(cornerRadius: 14))
+    }
+
+    private func downloadText(for model: PhoneModel) -> String {
+        switch download {
+        case .downloaded: "On this device, works offline"
+        case .partial: "Download paused, resumes with your first message"
+        default: "\(model.downloadSizeText) download with your first message"
+        }
     }
 }
 

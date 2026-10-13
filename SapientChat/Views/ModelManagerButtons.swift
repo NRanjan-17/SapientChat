@@ -10,7 +10,8 @@ struct ModelManagerButtons: View {
     let actions: ModelManagerRow.Actions
 
     var body: some View {
-        HStack(spacing: 6) {
+        // Each control is drawn at 30 pt but takes taps over 44 pt.
+        HStack(spacing: 0) {
             primary
             Menu {
                 ModelManagerMenuItems(row: row, actions: actions)
@@ -19,6 +20,8 @@ struct ModelManagerButtons: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(width: 30, height: 30)
                     .background(Color(.tertiarySystemFill), in: .circle)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(.rect)
             }
             .accessibilityLabel("More for \(row.model.displayName)")
         }
@@ -105,6 +108,8 @@ struct PillButton: View {
                 .frame(height: 30)
                 .background(filled ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(tint.opacity(0.15)), in: .capsule)
                 .opacity(isEnabled ? 1 : 0.4)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(.rect)
         }
     }
 }
@@ -135,6 +140,8 @@ struct DownloadRing: View {
                     .frame(width: 9, height: 9)
             }
             .frame(width: 30, height: 30)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(.rect)
         }
         .accessibilityLabel("Stop download")
     }

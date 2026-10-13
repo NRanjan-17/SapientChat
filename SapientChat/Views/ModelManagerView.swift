@@ -16,48 +16,15 @@ struct ModelManagerView: View {
     var body: some View {
         NavigationStack {
             List {
-                MemorySummarySection(
-                    loaded: viewModel.loaded.map(viewModel.displayName(of:)),
-                    capacity: viewModel.capacity,
-                    memory: viewModel.device.memory,
-                    onUnloadAll: { isConfirmingUnloadAll = true }
-                )
-                Section {
-                    LabeledContent {
-                        Text(viewModel.totalDownloadBytes == 0 ? "None" : Format.bytes(viewModel.totalDownloadBytes))
-                            .font(.headline)
-                            .foregroundStyle(.blue)
-                    } label: {
-                        Label {
-                            Text("Downloaded models")
-                        } icon: {
-                            Image(systemName: "internaldrive.fill")
-                                .foregroundStyle(.white)
-                                .frame(width: 28, height: 28)
-                                .background(.blue.gradient, in: .rect(cornerRadius: 7))
-                        }
-                    }
-                    Button(role: .destructive) {
-                        isConfirmingDeleteAll = true
-                    } label: {
-                        Label {
-                            Text("Delete All Downloads")
-                                .foregroundStyle(hasDownloads ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
-                        } icon: {
-                            Image(systemName: "trash.fill")
-                                .foregroundStyle(.white)
-                                .frame(width: 28, height: 28)
-                                .background(hasDownloads ? AnyShapeStyle(.red.gradient) : AnyShapeStyle(Color(.systemGray3)),
-                                            in: .rect(cornerRadius: 7))
-                        }
-                    }
-                    // Greyed out with no model on the device (leftover
-                    // tokenizer files alone don't count).
-                    .disabled(!hasDownloads)
-                } header: {
-                    Text("Storage")
-                } footer: {
-                    Text("Downloaded models load without a network connection.")
+                // Memory only matters once something is loaded; with
+                // nothing in it the models come first.
+                if !viewModel.loaded.isEmpty {
+                    MemorySummarySection(
+                        loaded: viewModel.loaded.map(viewModel.displayName(of:)),
+                        capacity: viewModel.capacity,
+                        memory: viewModel.device.memory,
+                        onUnloadAll: { isConfirmingUnloadAll = true }
+                    )
                 }
                 if let notice = viewModel.notice {
                     Section {
@@ -77,9 +44,49 @@ struct ModelManagerView: View {
                 ModelManagerSection(title: "In memory", rows: viewModel.loadedRows, actions: actions)
                 ModelManagerSection(title: "Downloaded", rows: viewModel.downloadedRows, actions: actions)
                 ModelManagerSection(title: "Not downloaded", rows: viewModel.notDownloadedRows, actions: actions)
+                // Leftover tokenizer files alone don't count as a download.
+                if hasDownloads {
+                    Section {
+                        LabeledContent {
+                            Text(Format.bytes(viewModel.totalDownloadBytes))
+                                .font(.headline)
+                                .foregroundStyle(.blue)
+                        } label: {
+                            Label {
+                                Text("Downloaded models")
+                            } icon: {
+                                Image(systemName: "internaldrive.fill")
+                                    .foregroundStyle(.white)
+                                    .frame(width: 28, height: 28)
+                                    .background(.blue.gradient, in: .rect(cornerRadius: 7))
+                            }
+                        }
+                        Button(role: .destructive) {
+                            isConfirmingDeleteAll = true
+                        } label: {
+                            Label {
+                                Text("Delete All Downloads")
+                                    .foregroundStyle(.red)
+                            } icon: {
+                                Image(systemName: "trash.fill")
+                                    .foregroundStyle(.white)
+                                    .frame(width: 28, height: 28)
+                                    .background(.red.gradient, in: .rect(cornerRadius: 7))
+                            }
+                        }
+                    } header: {
+                        Text("Storage")
+                    } footer: {
+                        Text("Downloaded models load without a network connection.")
+                    }
+                }
             }
             .readableContentWidth(760)
+            // A solid edge above the tab bar, so rows don't show through it.
+            .scrollEdgeEffectStyle(.hard, for: .bottom)
             .navigationTitle("Models")
+            // The same title row as Chats and Benchmark.
+            .toolbarTitleDisplayMode(.inlineLarge)
             .sheet(item: $settingsRow) { row in
                 ModelSettingsSheet(
                     model: row.model,
@@ -110,7 +117,7 @@ struct ModelManagerView: View {
                 isPresented: $isConfirmingUnloadAll
             ) {
                 Button("Cancel", role: .cancel) {}
-                Button("Unload All", role: .destructive) { Task { await viewModel.unloadAll() } }
+                Button("Unload All") { Task { await viewModel.unloadAll() } }
             } message: {
                 Text("They stay downloaded and load again when used. A reply or benchmark that's running stops.")
             }
@@ -126,7 +133,7 @@ struct ModelManagerView: View {
                 Button("Delete All", role: .destructive, action: deleteAll)
             }
             .problemAlert($viewModel.problem) { _ in viewModel.retry() }
-            .alert("Model", isPresented: $viewModel.errorMessage.isPresent) {
+            .alert("Couldn't Delete", isPresented: $viewModel.errorMessage.isPresent) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(viewModel.errorMessage ?? "")

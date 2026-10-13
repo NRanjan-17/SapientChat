@@ -58,6 +58,17 @@ final class ChatViewModel {
         model?.displayName ?? conversation.modelAlias
     }
 
+    /// Whether this chat's model is on the device; nil for an unknown model.
+    var modelDownload: ModelDownload? {
+        model.map { services.storage.download(forRepo: $0.repoId) }
+    }
+
+    /// Sending now starts a download the user hasn't seen the size of.
+    var needsDownloadToSend: Bool {
+        guard let modelDownload else { return false }
+        return !modelDownload.isDownloaded
+    }
+
     var isBusy: Bool {
         switch status {
         case .idle, .failed: false

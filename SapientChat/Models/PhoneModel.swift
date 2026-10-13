@@ -52,6 +52,78 @@ nonisolated struct PhoneModel: Identifiable, Hashable, Sendable {
         return UInt64(billions * 1e9 * bytesPerParam + overhead)
     }
 
+    /// Size of the files to download, in bytes, for "about 105 MB" before a
+    /// download starts (the download itself reports the real total). The
+    /// measured size of the repository's weights file where known; else an
+    /// estimate from the parameter count, within about 25% of the repos
+    /// measured: Q4_K_M ≈ 0.8 bytes per parameter, Q8_0 ≈ 1.2, and a
+    /// full-precision checkpoint (16-bit safetensors) ≈ 2.
+    var estimatedDownloadBytes: UInt64 {
+        let megabytes: [String: Double]
+        let bytesPerParam: Double
+        if params.contains("Q4") {
+            megabytes = Self.q4Megabytes
+            bytesPerParam = 0.8
+        } else if params.contains("Q8") {
+            megabytes = Self.q8Megabytes
+            bytesPerParam = 1.2
+        } else {
+            megabytes = Self.fullMegabytes
+            bytesPerParam = 2
+        }
+        if let known = megabytes[repoId] { return UInt64(known * 1e6) }
+        return UInt64(billions * 1e9 * bytesPerParam)
+    }
+
+    /// "105 MB" for a measured size, "About 540 MB" for an estimate.
+    var downloadSizeText: String {
+        let size = Format.compactBytes(estimatedDownloadBytes)
+        let measured: [String: Double] = if params.contains("Q4") {
+            Self.q4Megabytes
+        } else if params.contains("Q8") {
+            Self.q8Megabytes
+        } else {
+            Self.fullMegabytes
+        }
+        return measured[repoId] == nil ? "About \(size)" : size
+    }
+
+    /// Weights file sizes on Hugging Face, in MB, by repository (October 2026).
+    private static let q4Megabytes: [String: Double] = [
+        "unsloth/SmolLM2-135M-Instruct-GGUF": 105,
+        "Qwen/Qwen2.5-0.5B-Instruct-GGUF": 491,
+        "unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF": 398,
+        "unsloth/Llama-3.2-1B-Instruct-GGUF": 808,
+        "Qwen/Qwen2.5-1.5B-Instruct-GGUF": 1117,
+        "unsloth/Qwen2.5-Coder-1.5B-Instruct-GGUF": 986,
+        "unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF": 1117,
+        "HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF": 1056,
+    ]
+    private static let q8Megabytes: [String: Double] = [
+        "unsloth/SmolLM2-135M-Instruct-GGUF": 145,
+        "HuggingFaceTB/SmolLM2-360M-Instruct-GGUF": 386,
+        "Qwen/Qwen2.5-0.5B-Instruct-GGUF": 676,
+        "unsloth/Qwen2.5-Coder-0.5B-Instruct-GGUF": 531,
+        "unsloth/Llama-3.2-1B-Instruct-GGUF": 1321,
+        "Qwen/Qwen2.5-1.5B-Instruct-GGUF": 1895,
+        "unsloth/Qwen2.5-Coder-1.5B-Instruct-GGUF": 1647,
+        "unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF": 1895,
+    ]
+    private static let fullMegabytes: [String: Double] = [
+        "HuggingFaceTB/SmolLM2-135M-Instruct": 269,
+        "unsloth/gemma-3-270m-it": 569,
+        "google/gemma-3-270m-it": 569,
+        "unsloth/gemma-3-1b-it": 2033,
+        "microsoft/phi-1": 2837,
+        "microsoft/phi-1_5": 2837,
+        "HuggingFaceTB/SmolLM2-360M-Instruct": 724,
+        "Qwen/Qwen2.5-0.5B-Instruct": 988,
+        "unsloth/Llama-3.2-1B-Instruct": 2472,
+        "TinyLlama/TinyLlama-1.1B-Chat-v1.0": 2200,
+        "Qwen/Qwen2.5-1.5B-Instruct": 3087,
+        "HuggingFaceTB/SmolLM2-1.7B-Instruct": 3423,
+    ]
+
     /// A 4-bit or 8-bit GGUF, which iOS memory-maps: the CPU can read its
     /// weights from the file, so CPU + GPU doesn't need a second copy in
     /// memory. Full-precision (safetensors) models load into memory.

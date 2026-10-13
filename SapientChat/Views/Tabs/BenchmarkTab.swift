@@ -27,6 +27,7 @@ struct BenchmarkTab: View {
                 case .compare: CompareView(viewModel: compare, makeSelector: makeSelector, modeSwitch: modeSwitch)
                 }
             }
+            .scrollEdgeEffectStyle(.hard, for: .bottom)
             .navigationTitle("Benchmark")
             .toolbarTitleDisplayMode(.inlineLarge)
             // The two-form layout isn't one scroll view, and iPad then drew

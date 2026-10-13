@@ -9,6 +9,8 @@ struct ChatListView: View {
     @State private var renaming: Conversation?
     @State private var isRenaming = false
     @State private var newTitle = ""
+    @State private var pendingDelete: Conversation?
+    @State private var isConfirmingDelete = false
 
     var body: some View {
         List(selection: $viewModel.selectedID) {
@@ -17,20 +19,25 @@ struct ChatListView: View {
                     .tag(conversation.id)
                     .contextMenu {
                         Button("Rename", systemImage: "pencil") { startRenaming(conversation) }
-                        Button("Delete", systemImage: "trash", role: .destructive) { viewModel.delete(conversation) }
+                        Button("Delete", systemImage: "trash", role: .destructive) { confirmDelete(conversation) }
                     }
-                    .swipeActions {
-                        Button("Delete", systemImage: "trash", role: .destructive) { viewModel.delete(conversation) }
+                    // No full swipe: a chat can't be brought back.
+                    .swipeActions(allowsFullSwipe: false) {
+                        Button("Delete", systemImage: "trash") { confirmDelete(conversation) }
+                            .tint(.red)
                     }
             }
         }
         .overlay {
             if viewModel.conversations.isEmpty {
-                ContentUnavailableView(
-                    "No chats yet",
-                    systemImage: "bubble.left.and.bubble.right",
-                    description: Text("Tap the pencil to start one.")
-                )
+                ContentUnavailableView {
+                    Label("No chats yet", systemImage: "bubble.left.and.bubble.right")
+                } description: {
+                    Text("Chats run on this device and are saved here.")
+                } actions: {
+                    Button("New Chat", systemImage: "square.and.pencil", action: viewModel.newChat)
+                        .buttonStyle(.borderedProminent)
+                }
             }
         }
         .readableContentWidth(720)
@@ -47,6 +54,12 @@ struct ChatListView: View {
             TextField("Title", text: $newTitle)
             Button("Rename", action: finishRenaming)
             Button("Cancel", role: .cancel) {}
+        }
+        .alert(deleteTitle, isPresented: $isConfirmingDelete) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete", role: .destructive, action: deletePending)
+        } message: {
+            Text("Its messages are removed from this device and can't be brought back.")
         }
         .safeAreaInset(edge: .bottom) {
             if !viewModel.models.activeRows.isEmpty {
@@ -66,6 +79,25 @@ struct ChatListView: View {
     private func finishRenaming() {
         if let renaming { viewModel.rename(renaming, to: newTitle) }
         renaming = nil
+    }
+
+    private var deleteTitle: String {
+        "Delete “\(pendingDelete?.title ?? Conversation.untitled)”?"
+    }
+
+    /// A chat with no messages has nothing to lose, so it goes at once.
+    private func confirmDelete(_ conversation: Conversation) {
+        guard !conversation.messages.isEmpty else {
+            viewModel.delete(conversation)
+            return
+        }
+        pendingDelete = conversation
+        isConfirmingDelete = true
+    }
+
+    private func deletePending() {
+        if let pendingDelete { viewModel.delete(pendingDelete) }
+        pendingDelete = nil
     }
 
     /// Downloads and loads in progress live on the Models tab.
