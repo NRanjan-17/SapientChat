@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -77,17 +77,25 @@ struct MessageListView: View {
     }
 
     private func replyActions(for message: ChatMessage) -> some View {
-        HStack(spacing: 0) {
-            Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = message.text }
-            Button("Regenerate", systemImage: "arrow.clockwise", action: onRegenerate)
+        HStack(spacing: 4) {
+            replyAction("Copy", symbol: "doc.on.doc") { UIPasteboard.general.string = message.text }
+            replyAction("Regenerate", symbol: "arrow.clockwise", action: onRegenerate)
         }
-        .labelStyle(.iconOnly)
+        // The icons line up with the reply's text, not the tap area's edge.
+        .padding(.leading, -12)
+    }
+
+    /// An icon drawn at body size with a 44 pt tap area.
+    private func replyAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(.rect)
+        }
         .buttonStyle(.borderless)
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
-        .frame(minHeight: 44)
-        .buttonBorderShape(.circle)
-        .controlSize(.large)
+        .accessibilityLabel(title)
     }
 
     private func startEditing(_ message: ChatMessage) {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Foundation
 import Observation
@@ -316,6 +316,9 @@ final class PlaygroundViewModel {
         guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let note = object["sapient"] as? [String: Any]
         else { return nil }
+        if note["stopped_repeating"] as? Bool == true {
+            return "The reply was stopped because it kept repeating itself."
+        }
         if note["json_valid"] as? Bool == false {
             return "JSON was asked for, but the model's reply isn't valid JSON. It's shown as written."
         }

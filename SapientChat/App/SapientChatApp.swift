@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 //
 //  SapientChatApp.swift
@@ -17,6 +17,8 @@ struct SapientChatApp: App {
     @State private var viewModel: ChatListViewModel
     /// The animated SAPIENT splash, once per launch.
     @State private var showsSplash = true
+    /// The Terms of Service haven't been accepted on this device yet.
+    @State private var needsTerms = !TermsOfService.isAccepted()
 
     init() {
         // Chats are stored on this device only (no CloudKit).
@@ -27,7 +29,10 @@ struct SapientChatApp: App {
             fatalError("Couldn't open the chat database: \(error)")
         }
         self.container = container
-        let activities = ActivityKitLiveActivities()
+        // In front of the real Island: it also keeps the current activity
+        // for `GET /v1/activity`, which the Mac's notch helper (Sapient
+        // Island) reads, since a Mac has no Dynamic Island of its own.
+        let activities = WindowIsland(inner: ActivityKitLiveActivities())
         var services = AppServices.live()
         services.liveActivities = activities
         // Registers the background task handler, which iOS wants at launch.
@@ -48,6 +53,13 @@ struct SapientChatApp: App {
                 RootView(viewModel: viewModel)
                 if showsSplash {
                     SplashView { showsSplash = false }
+                }
+            }
+            // Over everything until accepted; it can't be swiped away.
+            .fullScreenCover(isPresented: $needsTerms) {
+                TermsOfServiceView {
+                    TermsOfService.accept()
+                    needsTerms = false
                 }
             }
         }

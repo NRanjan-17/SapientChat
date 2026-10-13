@@ -54,6 +54,28 @@ swift test    # SapientKit, from the repository root
 Debug builds accept `-SapientTab chats|models|benchmark|settings` (Edit Scheme →
 Arguments) to open a tab, handy for screenshots.
 
+## On a Mac
+
+Sapient Studio runs on Apple silicon Macs as an iPad app ("Designed for
+iPad"): pick **My Mac (Designed for iPad)** as the run destination in Xcode.
+The engine ships no Mac Catalyst build, so that is the way in.
+
+A Mac has no Dynamic Island, and an iPad app can't draw outside its own
+window, so the notch has its own small native app, **Sapient Island**. It
+hangs from the camera notch and shows what Sapient Studio is doing (serving,
+a request generating, a download, a benchmark); put the pointer on it for the
+details. It reads `GET /v1/activity` from Sapient Studio's local server, so
+turn the server on first (Settings → API Server).
+
+```bash
+cd SapientIsland
+swift run -c release                       # port 11435
+swift run -c release SapientIsland --port 8080
+```
+
+It has no Dock icon; right-click the Island to quit. On a display without a
+notch it sits at the top centre of the menu bar.
+
 ## Settings worth knowing
 
 | Setting | Where | What it does |
@@ -101,11 +123,12 @@ to answer API requests on your network.
 
 ## License
 
-Sapient Studio is **dual-licensed** by Nalinish Ranjan: the
+Sapient Studio is **dual-licensed** by OpenHorizon Labs Pvt Ltd: the
 [GNU AGPL-3.0-only](LICENSE) **or** a [commercial license](COMMERCIAL-LICENSE.md)
 for uses that aren't compatible with the AGPL (closed source, rebranding).
 [SapientKit](SapientKit/) is [MIT](SapientKit/LICENSE), so any app can use it to
-talk to Sapient Studio. Every source file carries an SPDX header.
+talk to Sapient Studio. Every source file carries an SPDX header. Developed by
+contributors Nalinish Ranjan and Saidev Dhal.
 
 Third-party parts (details in [NOTICE](NOTICE)):
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -9,6 +9,7 @@ struct ChatListView: View {
     @State private var renaming: Conversation?
     @State private var isRenaming = false
     @State private var newTitle = ""
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var pendingDelete: Conversation?
     @State private var isConfirmingDelete = false
 
@@ -35,8 +36,12 @@ struct ChatListView: View {
                 } description: {
                     Text("Chats run on this device and are saved here.")
                 } actions: {
-                    Button("New Chat", systemImage: "square.and.pencil", action: viewModel.newChat)
-                        .buttonStyle(.borderedProminent)
+                    // Beside the chat list, the wide layout's home screen
+                    // already offers New Chat.
+                    if horizontalSizeClass == .compact {
+                        Button("New Chat", systemImage: "square.and.pencil", action: viewModel.newChat)
+                            .buttonStyle(.borderedProminent)
+                    }
                 }
             }
         }

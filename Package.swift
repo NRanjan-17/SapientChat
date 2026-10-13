@@ -1,6 +1,6 @@
 // swift-tools-version:6.0
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Nalinish Ranjan — SapientKit (see SapientKit/LICENSE)
+// Copyright (c) 2026 OpenHorizon Labs Pvt Ltd — SapientKit (see SapientKit/LICENSE)
 
 // SapientKit as a Swift package other apps add by this repository's URL:
 // File → Add Package Dependencies → https://github.com/NRanjan-17/SapientChat

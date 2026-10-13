@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Foundation
 import SwiftData
@@ -180,6 +180,65 @@ struct StructuredAPITests {
         #expect(events.last == "data: [DONE]")
     }
 
+    @Test func aReplyCutOffForRepeatingSaysSoInsteadOfLookingFinished() async throws {
+        let chat = ControlledChatService()
+        let device = DeviceStatus(memoryService: FixedMemory(), thermalService: SilentThermalService())
+        let router = ServeRouter(services: makeServices(chat: chat), device: device)
+        async let pending = router.handle(post(#"{"model":"smollm2-135m-q4","messages":[{"role":"user","content":"Hi"}]}"#))
+        #expect(await eventually { await chat.replyCount == 1 })
+        await chat.send("hello hello", toReply: 0)
+        await chat.failReply(0, with: ChatServiceError.stoppedRepeating)
+        let response = await pending
+        #expect(response.status == 200)
+        let reply = try JSONSerialization.jsonObject(with: Data(try await text(response).utf8)) as? [String: Any]
+        let choice = (reply?["choices"] as? [[String: Any]])?.first
+        #expect((choice?["message"] as? [String: Any])?["content"] as? String == "hello hello", "what arrived is kept")
+        #expect(choice?["finish_reason"] as? String == "length")
+        #expect((reply?["sapient"] as? [String: Any])?["stopped_repeating"] as? Bool == true)
+    }
+
+    @Test func reachingMaxTokensIsReportedAsLength() async throws {
+        let (router, _) = makeRouter(reply: ["a", "b", "c"])
+        let body = try await text(await router.handle(post(#"{"model":"smollm2-135m-q4","max_tokens":2,"messages":[{"role":"user","content":"Hi"}]}"#)))
+        #expect(body.contains(#""finish_reason" : "length""#))
+        #expect(!body.contains("sapient"), "no note when nothing unusual happened")
+    }
+
+    @Test func theActivityEndpointSaysWhatIsRunningWithoutBeingLogged() async throws {
+        let chat = ControlledChatService(autoReply: ["ok"])
+        let device = DeviceStatus(memoryService: FixedMemory(), thermalService: SilentThermalService())
+        let router = ServeRouter(services: makeServices(chat: chat), device: device)
+        let island = WindowIsland(lingering: .milliseconds(10))
+        router.activity = { island.snapshot }
+        router.apiKey = "secret"
+        var logged = 0
+        router.onRequest = { _ in logged += 1 }
+
+        let idle = try JSONSerialization.jsonObject(with: Data(try await text(await router.handle(HTTPRequest(method: "GET", path: "/v1/activity"))).utf8)) as? [String: Any]
+        #expect(idle?["active"] as? Bool == false)
+
+        let id = island.start(
+            SapientActivityAttributes(title: "API server", model: "10.0.0.2:11435"),
+            state: .init(phase: .serving, detail: "Waiting for requests", requests: 3, startedAt: .now)
+        )
+        var local = HTTPRequest(method: "GET", path: "/v1/activity")
+        local.remoteAddress = "127.0.0.1"
+        let busy = try JSONSerialization.jsonObject(with: Data(try await text(await router.handle(local)).utf8)) as? [String: Any]
+        #expect(busy?["active"] as? Bool == true)
+        #expect(busy?["phase"] as? String == "serving" && busy?["requests"] as? Int == 3)
+        #expect(busy?["model"] as? String == "10.0.0.2:11435")
+        #expect(logged == 0, "the helper's polling isn't a request to log")
+
+        // From another device it needs the key, like everything else.
+        var remote = HTTPRequest(method: "GET", path: "/v1/activity")
+        remote.remoteAddress = "192.168.1.50"
+        #expect(await router.handle(remote).status == 401)
+
+        island.end(try #require(id), state: .init(phase: .finished, startedAt: .now, endedAt: .now))
+        #expect(island.snapshot.phase == "finished", "kept a moment after it ends")
+        #expect(await eventually { !island.snapshot.active })
+    }
+
     @Test func aPlainRequestStillStreamsTokenByToken() async throws {
         let (router, _) = makeRouter(reply: ["a", "b", "c"])
         let response = await router.handle(post(#"{"model":"smollm2-135m-q4","stream":true,"messages":[{"role":"user","content":"Hi"}]}"#))
@@ -265,6 +324,27 @@ struct DeveloperModelTests {
         // A few identical lines in a row (a table, a list) are fine.
         var list = RepetitionGuard()
         #expect(!(0..<40).contains { _ in list.isLooping(after: "- item\n") })
+    }
+
+    @Test func termsAreAskedOnceAndAgainWhenTheyChange() {
+        let defaults = UserDefaults(suiteName: "terms-\(UUID().uuidString)")!
+        #expect(!TermsOfService.isAccepted(defaults))
+        TermsOfService.accept(defaults)
+        #expect(TermsOfService.isAccepted(defaults))
+        // An older acceptance doesn't cover a newer version of the text.
+        defaults.set(TermsOfService.version - 1, forKey: TermsOfService.acceptedVersionKey)
+        #expect(!TermsOfService.isAccepted(defaults))
+    }
+
+    @Test func theTermsSayWhatTheyMustAndLinkToTheCompany() {
+        let text = TermsOfService.sections.map(\.body).joined(separator: " ")
+        #expect(text.contains("OpenHorizon Labs Pvt Ltd"))
+        #expect(text.contains("[openhorizon.so](https://openhorizon.so)"))
+        #expect(text.contains("does not collect"))
+        #expect(text.contains("Hugging Face"))
+        #expect(text.contains("without warranty"))
+        #expect(text.contains("Nalinish Ranjan and Saidev Dhal"))
+        #expect(TermsOfService.sections.allSatisfy { (try? AttributedString(markdown: $0.body)) != nil })
     }
 
     @Test func samplingSettingsAreClampedAndSavedPerModel() {

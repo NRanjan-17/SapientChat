@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Foundation
 
@@ -153,7 +153,7 @@ nonisolated struct AppProblem: Equatable, Sendable, Identifiable {
     static func closedWhileLoading(model: String) -> AppProblem {
         AppProblem(
             kind: .closedWhileLoading, title: "Sapient Closed While Loading",
-            message: "Sapient closed while loading \(model), most likely because the phone ran out of memory. Tap Try Again: idle models are released first to make room, and if it still can't fit you'll be told instead."
+            message: "Sapient closed while loading \(model), most likely because the device ran out of memory. Tap Try Again: idle models are released first to make room, and if it still can't fit you'll be told instead."
         )
     }
 

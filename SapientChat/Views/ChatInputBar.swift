@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -46,12 +46,12 @@ struct ChatInputBar: View {
             .padding(.trailing, 4)
             .padding(.bottom, 2)
         }
-        .background(.regularMaterial, in: shape)
+        .glassSurface(in: shape)
         .overlay {
-            shape.strokeBorder(
-                isFocused ? AnyShapeStyle(.tint) : AnyShapeStyle(.separator),
-                lineWidth: isFocused ? 1.5 : 0.5
-            )
+            // Glass has its own edge; only the focus ring is drawn on top.
+            if isFocused {
+                shape.strokeBorder(.tint, lineWidth: 1.5)
+            }
         }
         .overlay(alignment: .bottom) {
             // Below the pill, in the padding, so the field doesn't move.

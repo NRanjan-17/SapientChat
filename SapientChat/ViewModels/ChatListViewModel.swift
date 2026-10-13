@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Foundation
 import Observation
@@ -55,6 +55,9 @@ final class ChatListViewModel {
         device = DeviceStatus(memoryService: services.memory, thermalService: services.thermal)
         let router = ServeRouter(services: services, device: device)
         router.liveActivities = liveActivities
+        if let island = liveActivities as? WindowIsland {
+            router.activity = { island.snapshot }
+        }
         server = ServerViewModel(router: router, liveActivities: liveActivities, requestLog: requestLog)
         handoff = HandoffViewModel(router: router)
         playground = PlaygroundViewModel(

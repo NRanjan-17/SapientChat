@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
 /// Versions of the app, the engine and the device it runs on.
 struct AboutSection: View {
     private let device = DeviceInfo.current()
+    @State private var isShowingTerms = false
 
     private var appVersion: String {
         let info = Bundle.main.infoDictionary
@@ -20,9 +21,14 @@ struct AboutSection: View {
             LabeledContent("SAPIENT engine", value: SapientVersion.current)
             LabeledContent("Device", value: device.model)
             LabeledContent("System", value: device.system)
+            Button("Terms of Service") { isShowingTerms = true }
+                .foregroundStyle(.primary)
             NavigationLink("Acknowledgements") {
                 AcknowledgementsView()
             }
+        }
+        .sheet(isPresented: $isShowingTerms) {
+            TermsOfServiceView()
         }
     }
 }
@@ -32,7 +38,8 @@ struct AcknowledgementsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Sapient Studio © 2026 Nalinish Ranjan and Saidev Dhal, licensed under the GNU Affero General Public License v3.0 only, or a commercial license (see COMMERCIAL-LICENSE.md). It comes with no warranty.")
+                Text("Sapient Studio © 2026 OpenHorizon Labs Pvt Ltd, licensed under the GNU Affero General Public License v3.0 only, or a commercial license (see COMMERCIAL-LICENSE.md). It comes with no warranty.")
+                Text("Developed by contributors Nalinish Ranjan and Saidev Dhal.")
                 Text("The SAPIENT engine © 2026 OpenHorizon Labs Pvt Ltd, licensed under AGPL-3.0-only or a commercial license from OpenHorizon Labs. \"SAPIENT\" and its logo are their trademarks.")
             } header: {
                 Text("Licenses")

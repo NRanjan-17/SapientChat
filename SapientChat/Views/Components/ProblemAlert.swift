@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 import UIKit
@@ -8,7 +8,7 @@ extension AppProblem {
     /// `from(_:)` with what the device knows now: whether it's offline, and
     /// whether it's an iPhone or iPad (for storage advice).
     static func current(_ error: any Error, model: String, progress: DownloadProgress? = nil) -> AppProblem {
-        from(error, model: model, progress: progress, isOffline: NetworkMonitor.shared.isOffline, device: UIDevice.current.model)
+        from(error, model: model, progress: progress, isOffline: NetworkMonitor.shared.isOffline, device: UIDevice.current.spokenName)
     }
 }
 

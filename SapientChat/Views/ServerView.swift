@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 import UIKit
@@ -100,7 +100,7 @@ struct ServerView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Sapient keeps running with the app closed to answer API requests. "
-                + "This uses noticeably more battery and can warm the phone. "
+                + "This uses noticeably more battery and can warm the device. "
                 + "Models run on the CPU (iOS doesn't allow GPU work in the background), so models in memory are released now. "
                 + "iOS may still close the app if memory runs low. Not available in App Store builds.")
         }
