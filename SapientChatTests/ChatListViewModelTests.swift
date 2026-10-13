@@ -104,7 +104,7 @@ struct ChatListViewModelTests {
     }
 
     @Test func everyTabHasATitleAndSymbol() {
-        #expect(AppTab.allCases.map(\.title) == ["Chats", "Models", "Benchmark", "Settings"])
+        #expect(AppTab.allCases.map(\.title) == ["Chats", "Playground", "Models", "Benchmark", "Settings"])
         #expect(AppTab.allCases.allSatisfy { !$0.symbol.isEmpty })
     }
 

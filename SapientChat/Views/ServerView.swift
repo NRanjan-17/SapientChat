@@ -11,6 +11,7 @@ struct ServerView: View {
     @Bindable var viewModel: ServerViewModel
     @State private var portText = ""
     @State private var isConfirmingBackground = false
+    @State private var isPairing = false
 
     var body: some View {
         Form {
@@ -30,6 +31,7 @@ struct ServerView: View {
             }
 
             Section {
+                Toggle("Start when Sapient opens", isOn: $viewModel.startsWithApp)
                 if ServerViewModel.canRunInBackground {
                     Toggle("Keep running in background", isOn: runsInBackground)
                         .disabled(!viewModel.isOn)
@@ -40,7 +42,7 @@ struct ServerView: View {
                         .foregroundStyle(.red)
                 }
             } header: {
-                Text("Background")
+                Text("Always on")
             } footer: {
                 Text(backgroundFooter)
             }
@@ -55,6 +57,9 @@ struct ServerView: View {
                     .contextMenu {
                         Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = endpoint.url }
                     }
+                }
+                if viewModel.allowsNetwork && !viewModel.addresses.isEmpty {
+                    Button("Pair a Device with a QR Code", systemImage: "qrcode") { isPairing = true }
                 }
                 if viewModel.allowsNetwork && viewModel.addresses.isEmpty {
                     Text("Join Wi-Fi or turn on Personal Hotspot to reach this device from others.")
@@ -98,6 +103,12 @@ struct ServerView: View {
                 + "This uses noticeably more battery and can warm the phone. "
                 + "Models run on the CPU (iOS doesn't allow GPU work in the background), so models in memory are released now. "
                 + "iOS may still close the app if memory runs low. Not available in App Store builds.")
+        }
+        .sheet(isPresented: $isPairing) {
+            PairingSheet(
+                endpoints: viewModel.endpoints.filter { !$0.url.contains("127.0.0.1") },
+                apiKey: viewModel.apiKey
+            )
         }
         .scrollDismissesKeyboard(.interactively)
         .readableContentWidth(760)

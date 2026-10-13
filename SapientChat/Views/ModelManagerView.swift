@@ -92,9 +92,10 @@ struct ModelManagerView: View {
                     model: row.model,
                     temperature: viewModel.temperature(for: row),
                     contextWindow: viewModel.contextWindow(for: row),
+                    sampling: viewModel.sampling(for: row),
                     isLoaded: row.isLoaded
-                ) { temperature, tokens in
-                    viewModel.setSettings(temperature: temperature, contextWindow: tokens, for: row)
+                ) { temperature, tokens, sampling in
+                    viewModel.setSettings(temperature: temperature, contextWindow: tokens, sampling: sampling, for: row)
                 }
             }
             .toolbar {

@@ -9,6 +9,8 @@ struct SettingsTab: View {
     @Bindable var server: ServerViewModel
     /// Releases loaded models, so they reload on the new Compute choice.
     var onComputeChange: () -> Void = {}
+    /// Opens a logged request in the Playground.
+    var onReplay: (RequestLogEntry) -> Void = { _ in }
     @AppStorage(AppSettings.showReplyStats) private var showReplyStats = true
     @AppStorage(EngineBackendPreference.computeKey) private var compute = ComputePreference.automatic
 
@@ -52,7 +54,7 @@ struct SettingsTab: View {
                         Label("Endpoints & Access", systemImage: "link")
                     }
                     NavigationLink {
-                        RequestLogView(viewModel: server)
+                        RequestLogView(viewModel: server, onReplay: onReplay)
                     } label: {
                         LabeledContent {
                             Text(server.log.count, format: .number)

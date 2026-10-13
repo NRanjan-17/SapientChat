@@ -28,6 +28,8 @@ final class BenchmarkViewModel: Identifiable {
     @ObservationIgnored private let service: any BenchmarkService
     /// Told whether the benchmark finished (true) or failed (false).
     @ObservationIgnored private let onFinish: (Bool) -> Void
+    /// Given each finished result, for the benchmark history.
+    @ObservationIgnored var onResult: (BenchmarkResult) -> Void = { _ in }
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private let liveActivities: any LiveActivityService
     @ObservationIgnored private var activity: LiveActivityTracker?
@@ -75,6 +77,7 @@ final class BenchmarkViewModel: Identifiable {
                 let result = try await service.benchmark(model: model, settings: settings) { progress in
                     Task { @MainActor in self?.progressed(progress) }
                 }
+                self?.onResult(result)
                 self?.finish(.finished(result))
             } catch {
                 self?.finish(.failed(String(describing: error)))

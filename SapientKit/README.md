@@ -166,5 +166,5 @@ reply and timing.
   allows before each load.
 - `temperature` in a chat request isn't applied per request (the engine sets it
   when a model loads): set it per model with `POST /v1/models/settings`.
-  `tools` aren't supported; a reply is capped at 512 tokens. `usage.prompt_tokens` is 0; `completion_tokens` counts streamed pieces.
+  `tools` and `response_format` are best effort (asked for in the prompt, then read back; see docs/INTEGRATION.md). A reply has no cap of its own. `usage.prompt_tokens` is 0; `completion_tokens` counts streamed pieces.
 - `/v1/completions` runs the prompt through the model's chat template.

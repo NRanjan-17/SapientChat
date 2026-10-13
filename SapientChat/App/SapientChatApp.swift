@@ -22,7 +22,7 @@ struct SapientChatApp: App {
         // Chats are stored on this device only (no CloudKit).
         let container: ModelContainer
         do {
-            container = try ModelContainer(for: Conversation.self, StoredMessage.self, RequestRecord.self)
+            container = try ModelContainer(for: Conversation.self, StoredMessage.self, RequestRecord.self, BenchmarkRecord.self, PromptSetRecord.self)
         } catch {
             fatalError("Couldn't open the chat database: \(error)")
         }
@@ -36,7 +36,9 @@ struct SapientChatApp: App {
             services: services,
             store: SwiftDataConversationStore(context: container.mainContext),
             liveActivities: activities,
-            requestLog: SwiftDataRequestLogStore(context: container.mainContext)
+            requestLog: SwiftDataRequestLogStore(context: container.mainContext),
+            benchmarkHistory: SwiftDataBenchmarkHistoryStore(context: container.mainContext),
+            promptSets: SwiftDataPromptSetStore(context: container.mainContext)
         ))
     }
 

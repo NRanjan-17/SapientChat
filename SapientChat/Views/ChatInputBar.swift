@@ -16,6 +16,10 @@ struct ChatInputBar: View {
     let canSend: Bool
     let onSend: () -> Void
     let onStop: () -> Void
+    /// A line under the field, e.g. the context estimate.
+    var footnote: String?
+    /// The footnote is a warning (nearly out of context).
+    var footnoteWarns = false
 
     @FocusState private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -49,6 +53,19 @@ struct ChatInputBar: View {
                 lineWidth: isFocused ? 1.5 : 0.5
             )
         }
+        .overlay(alignment: .bottom) {
+            // Below the pill, in the padding, so the field doesn't move.
+            if let footnote {
+                Text(footnote)
+                    .font(.caption2)
+                    .foregroundStyle(footnoteWarns ? AnyShapeStyle(.orange) : AnyShapeStyle(.tertiary))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .offset(y: 16)
+                    .transition(.opacity)
+            }
+        }
+        .padding(.bottom, footnote == nil ? 0 : 12)
         .opacity(isLoading ? 0.75 : 1)
         .animation(reduceMotion ? nil : .snappy(duration: 0.25), value: isFocused)
         .animation(reduceMotion ? nil : .smooth(duration: 0.2), value: draft)

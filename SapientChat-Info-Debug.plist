@@ -10,7 +10,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.NRanjan-17.SapientChat.api</string>
+			<string>so.openhorizon.sapient.studio.api</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>sapient</string>

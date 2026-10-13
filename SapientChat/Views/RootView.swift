@@ -14,16 +14,29 @@ struct RootView: View {
             Tab(AppTab.chats.title, systemImage: AppTab.chats.symbol, value: .chats) {
                 ChatsTab(viewModel: viewModel)
             }
+            Tab(AppTab.playground.title, systemImage: AppTab.playground.symbol, value: .playground) {
+                PlaygroundView(
+                    viewModel: viewModel.playground,
+                    makeSelector: viewModel.makeModelSelector,
+                    contextWindow: viewModel.contextWindow(for:)
+                )
+            }
             Tab(AppTab.models.title, systemImage: AppTab.models.symbol, value: .models) {
                 ModelManagerView(viewModel: viewModel.models)
             }
             Tab(AppTab.benchmark.title, systemImage: AppTab.benchmark.symbol, value: .benchmark) {
-                BenchmarkTab(benchmark: viewModel.benchmark, compare: viewModel.compare, makeSelector: viewModel.makeModelSelector)
+                BenchmarkTab(
+                    benchmark: viewModel.benchmark, compare: viewModel.compare,
+                    makeSelector: viewModel.makeModelSelector, history: viewModel.benchmarkHistory,
+                    promptSets: viewModel.promptSets
+                )
             }
             Tab(AppTab.settings.title, systemImage: AppTab.settings.symbol, value: .settings) {
-                SettingsTab(server: viewModel.server) {
-                    Task { await viewModel.models.unloadAll() }
-                }
+                SettingsTab(
+                    server: viewModel.server,
+                    onComputeChange: { Task { await viewModel.models.unloadAll() } },
+                    onReplay: viewModel.openInPlayground
+                )
             }
         }
         // The sections always sit in the tab bar: across the top on iPad,

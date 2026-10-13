@@ -32,7 +32,7 @@ struct AcknowledgementsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Sapient Chat © 2026 Nalinish Ranjan, licensed under the GNU Affero General Public License v3.0 only, or a commercial license from its author. It comes with no warranty.")
+                Text("Sapient Studio © 2026 Nalinish Ranjan and Saidev Dhal, licensed under the GNU Affero General Public License v3.0 only, or a commercial license (see COMMERCIAL-LICENSE.md). It comes with no warranty.")
                 Text("The SAPIENT engine © 2026 OpenHorizon Labs Pvt Ltd, licensed under AGPL-3.0-only or a commercial license from OpenHorizon Labs. \"SAPIENT\" and its logo are their trademarks.")
             } header: {
                 Text("Licenses")

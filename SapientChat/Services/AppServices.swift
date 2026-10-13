@@ -16,6 +16,8 @@ struct AppServices {
     var contextWindows: ContextWindowStore
     /// Per-model sampling temperatures; the engine reads them at load.
     var temperatures: TemperatureStore
+    /// Per-model top-p, top-k and repetition penalty; read at load too.
+    var sampling: SamplingStore
     /// The Dynamic Island; nothing in tests and previews.
     var liveActivities: any LiveActivityService {
         didSet { downloadCoordinator.liveActivities = liveActivities }
@@ -36,6 +38,7 @@ struct AppServices {
         downloads: any ModelDownloadService,
         contextWindows: ContextWindowStore = .standard,
         temperatures: TemperatureStore = .standard,
+        sampling: SamplingStore = .standard,
         liveActivities: any LiveActivityService = NoLiveActivities(),
         memoryLedger: ModelMemoryLedger = .standard
     ) {
@@ -49,6 +52,7 @@ struct AppServices {
         self.downloads = downloads
         self.contextWindows = contextWindows
         self.temperatures = temperatures
+        self.sampling = sampling
         self.liveActivities = liveActivities
         downloadCoordinator = DownloadCoordinator(downloads: downloads, catalog: catalog)
         downloadCoordinator.liveActivities = liveActivities

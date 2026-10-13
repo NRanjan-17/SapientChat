@@ -68,24 +68,28 @@ struct TemperaturePicker: View {
 struct ModelSettingsSheet: View {
     let model: PhoneModel
     let isLoaded: Bool
-    let onSave: (_ temperature: Double?, _ contextWindow: Int?) -> Void
+    let onSave: (_ temperature: Double?, _ contextWindow: Int?, _ sampling: SamplingSettings) -> Void
     @State private var temperature: Double?
     @State private var contextWindow: Int?
+    @State private var sampling: SamplingSettings
     @Environment(\.dismiss) private var dismiss
 
-    init(model: PhoneModel, temperature: Double?, contextWindow: Int?, isLoaded: Bool,
-         onSave: @escaping (_ temperature: Double?, _ contextWindow: Int?) -> Void) {
+    init(model: PhoneModel, temperature: Double?, contextWindow: Int?, sampling: SamplingSettings = SamplingSettings(),
+         isLoaded: Bool,
+         onSave: @escaping (_ temperature: Double?, _ contextWindow: Int?, _ sampling: SamplingSettings) -> Void) {
         self.model = model
         self.isLoaded = isLoaded
         self.onSave = onSave
         _temperature = State(initialValue: temperature)
         _contextWindow = State(initialValue: contextWindow)
+        _sampling = State(initialValue: sampling)
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 TemperaturePicker(model: model, isLoaded: isLoaded, temperature: $temperature)
+                SamplingSection(sampling: $sampling, isSampling: temperature != nil, isLoaded: isLoaded)
                 if ContextWindowStore.isAdjustable(model) {
                     ContextWindowPicker(model: model, isLoaded: isLoaded, tokens: $contextWindow)
                 }
@@ -98,7 +102,7 @@ struct ModelSettingsSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onSave(temperature, contextWindow)
+                        onSave(temperature, contextWindow, sampling)
                         dismiss()
                     }
                 }
@@ -109,7 +113,7 @@ struct ModelSettingsSheet: View {
 }
 
 #Preview {
-    ModelSettingsSheet(model: TestPreviewModel.model, temperature: 0.7, contextWindow: nil, isLoaded: true) { _, _ in }
+    ModelSettingsSheet(model: TestPreviewModel.model, temperature: 0.7, contextWindow: nil, isLoaded: true) { _, _, _ in }
 }
 
 private enum TestPreviewModel {

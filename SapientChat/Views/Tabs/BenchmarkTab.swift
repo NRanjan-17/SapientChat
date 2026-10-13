@@ -8,10 +8,13 @@ struct BenchmarkTab: View {
     let benchmark: BenchmarkViewModel
     let compare: CompareViewModel
     let makeSelector: (String, @escaping (String) -> Void) -> ModelSelectorViewModel
+    var history: BenchmarkHistory?
+    var promptSets: PromptSetsViewModel?
+    @State private var isShowingHistory = false
     @SceneStorage("benchmarkMode") private var mode = BenchmarkMode.single
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    private var isRunning: Bool { benchmark.isRunning || compare.isRunning }
+    private var isRunning: Bool { benchmark.isRunning || compare.isRunning || promptSets?.isRunning == true }
 
     /// Shown as the first row of the setup column, not as a band of its own.
     private var modeSwitch: BenchmarkModeSwitch {
@@ -25,7 +28,21 @@ struct BenchmarkTab: View {
                 switch mode {
                 case .single: BenchmarkView(viewModel: benchmark, makeSelector: makeSelector, modeSwitch: modeSwitch)
                 case .compare: CompareView(viewModel: compare, makeSelector: makeSelector, modeSwitch: modeSwitch)
+                case .promptSets:
+                    if let promptSets {
+                        PromptSetsView(viewModel: promptSets, makeSelector: makeSelector, modeSwitch: modeSwitch)
+                    }
                 }
+            }
+            .toolbar {
+                if history != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("History", systemImage: "clock.arrow.circlepath") { isShowingHistory = true }
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingHistory) {
+                if let history { BenchmarkHistoryView(history: history) }
             }
             .scrollEdgeEffectStyle(.hard, for: .bottom)
             .navigationTitle("Benchmark")

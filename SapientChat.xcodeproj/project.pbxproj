@@ -469,7 +469,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SapientChat-Info-Debug.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sapient Studio";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Sapient serves its on-device models to other devices on your network when you turn on the API server.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
@@ -482,7 +482,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat";
+				PRODUCT_BUNDLE_IDENTIFIER = so.openhorizon.sapient.studio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SAPIENT_BACKGROUND_SERVER";
@@ -507,7 +507,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "SapientChat-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sapient Studio";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Sapient serves its on-device models to other devices on your network when you turn on the API server.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
@@ -520,7 +520,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat";
+				PRODUCT_BUNDLE_IDENTIFIER = so.openhorizon.sapient.studio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -542,7 +542,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChatTests";
+				PRODUCT_BUNDLE_IDENTIFIER = so.openhorizon.sapient.studioTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -564,7 +564,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChatTests";
+				PRODUCT_BUNDLE_IDENTIFIER = so.openhorizon.sapient.studioTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -584,7 +584,7 @@
 				DEVELOPMENT_TEAM = 667V7CCT79;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChatUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = so.openhorizon.sapient.studioUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -604,7 +604,7 @@
 				DEVELOPMENT_TEAM = 667V7CCT79;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChatUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = so.openhorizon.sapient.studioUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -625,7 +625,7 @@
 				DEVELOPMENT_TEAM = 667V7CCT79;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Activity-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sapient Studio";
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -633,7 +633,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat.Activity";
+				PRODUCT_BUNDLE_IDENTIFIER = so.openhorizon.sapient.studio.Activity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -654,7 +654,7 @@
 				DEVELOPMENT_TEAM = 667V7CCT79;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Activity-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = Sapient;
+				INFOPLIST_KEY_CFBundleDisplayName = "Sapient Studio";
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -662,7 +662,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.NRanjan-17.SapientChat.Activity";
+				PRODUCT_BUNDLE_IDENTIFIER = so.openhorizon.sapient.studio.Activity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

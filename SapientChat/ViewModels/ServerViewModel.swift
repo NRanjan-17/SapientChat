@@ -76,6 +76,14 @@ final class ServerViewModel: Identifiable {
     /// Why background mode couldn't start, if it failed.
     private(set) var backgroundError: String?
 
+    /// Turn the server on whenever the app opens, so the phone is a server
+    /// as soon as Sapient is launched. Off by default.
+    var startsWithApp: Bool {
+        didSet { defaults.set(startsWithApp, forKey: Keys.startsWithApp) }
+    }
+    /// The app has opened once this launch (so "start with the app" has run).
+    @ObservationIgnored private var hasOpened = false
+
     /// Stops the screen locking (which would pause the server) while running.
     var keepsAwake: Bool {
         didSet {
@@ -123,6 +131,7 @@ final class ServerViewModel: Identifiable {
         allowsNetwork = defaults.object(forKey: Keys.allowsNetwork) as? Bool ?? true
         apiKey = defaults.string(forKey: Keys.apiKey) ?? ""
         keepsAwake = defaults.object(forKey: Keys.keepsAwake) as? Bool ?? true
+        startsWithApp = defaults.bool(forKey: Keys.startsWithApp)
         router.apiKey = apiKey
         router.onRequest = { [weak self] entry in self?.record(entry) }
     }
@@ -188,6 +197,7 @@ final class ServerViewModel: Identifiable {
     /// Leaving the app: with background mode off, ask iOS for its extra time
     /// so requests already running can finish before the server pauses.
     func appDidLeaveForeground() {
+        if wantsRunning && !runsInBackground { serverActivity.pause() }
         guard wantsRunning, !runsInBackground, backgroundTask == .invalid else { return }
         backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Finish API requests") { [weak self] in
             self?.endBackgroundTask()
@@ -207,6 +217,13 @@ final class ServerViewModel: Identifiable {
     func appDidBecomeActive() {
         endBackgroundTask()
         refreshAddresses()
+        serverActivity.resume()
+        // Once per launch, and from the foreground: iOS only lets a Live
+        // Activity (the server's Dynamic Island) start there.
+        if !hasOpened {
+            hasOpened = true
+            if startsWithApp && !wantsRunning { start() }
+        }
         if wantsRunning && status != .running { start() }
     }
 
@@ -219,6 +236,7 @@ final class ServerViewModel: Identifiable {
         static let keepsAwake = "server.keepsAwake"
         static let runsInBackground = "server.runsInBackground"
         static let savesContent = "server.savesContent"
+        static let startsWithApp = "server.startsWithApp"
     }
 
     private static func defaultKeeper() -> any BackgroundKeeping {
@@ -229,9 +247,9 @@ final class ServerViewModel: Identifiable {
         #endif
     }
 
-    /// Silent audio, CPU-only models and the server's Dynamic Island run
-    /// only while serving in the background. Otherwise all three are off, so
-    /// the app suspends and closes normally.
+    /// Silent audio and CPU-only models run only while serving in the
+    /// background; otherwise both are off, so the app suspends and closes
+    /// normally. The server's Dynamic Island follows the server itself.
     private func updateKeeper() {
         defer {
             updateEngineBackend()
@@ -274,8 +292,11 @@ final class ServerViewModel: Identifiable {
         Task { await router.releaseAllModels() }
     }
 
+    /// The server's Dynamic Island is up whenever the server is on, so
+    /// Sapient stays one tap away after you leave it: live while it keeps
+    /// running in the background, "Paused" when iOS suspends it.
     private func updateServerActivity() {
-        if isServingInBackground {
+        if wantsRunning {
             serverActivity.begin(endpoint: endpoints.last.map { $0.url.replacing("http://", with: "") } ?? "port \(port)")
         } else {
             serverActivity.finish()
