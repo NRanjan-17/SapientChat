@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Nalinish Ranjan — SapientKit (see SapientKit/LICENSE)
+// Copyright (c) 2026 OpenHorizon Labs Pvt Ltd — SapientKit (see SapientKit/LICENSE)
 
 import Foundation
 
@@ -38,7 +38,7 @@ public struct GenerationResult: Sendable, Equatable {
 public struct Health: Codable, Sendable, Equatable {
     public struct Device: Codable, Sendable, Equatable {
         public let footprintBytes: UInt64?
-        /// What iOS still lets SapientChat allocate; nil when there's no limit.
+        /// What iOS still lets SapientStudio allocate; nil when there's no limit.
         public let availableBytes: UInt64?
         /// "nominal", "fair", "serious" or "critical".
         public let thermal: String
@@ -54,7 +54,7 @@ public struct Health: Codable, Sendable, Equatable {
     public let device: Device?
 }
 
-/// `GET /v1/ping`: SapientChat is up.
+/// `GET /v1/ping`: SapientStudio is up.
 public struct Ping: Codable, Sendable, Equatable {
     public let status: String
     /// The SAPIENT engine version.
@@ -177,9 +177,9 @@ public enum SettingChange<Value: Sendable & Equatable>: Sendable, Equatable {
 public enum SapientError: Error, Sendable, Equatable, LocalizedError {
     /// The API answered with an error.
     case api(status: Int, message: String)
-    /// SapientChat isn't installed (handoff) or can't be reached (HTTP).
+    /// SapientStudio isn't installed (handoff) or can't be reached (HTTP).
     case unavailable(String)
-    /// The user cancelled the request in SapientChat.
+    /// The user cancelled the request in SapientStudio.
     case cancelled
     case invalidResponse
 

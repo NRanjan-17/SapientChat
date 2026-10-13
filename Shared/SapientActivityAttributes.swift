@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import ActivityKit
 import Foundation
@@ -13,6 +13,9 @@ nonisolated struct SapientActivityAttributes: ActivityAttributes {
             case preparing, downloading, loading, generating, benchmarking, finished, failed
             /// The API server is up, waiting for or between requests.
             case serving
+            /// The server is on but iOS has suspended the app; it answers
+            /// again when Sapient is opened.
+            case paused
         }
 
         var phase: Phase
@@ -53,6 +56,7 @@ extension SapientActivityAttributes.ContentState.Phase {
         case .finished: "Done"
         case .failed: "Failed"
         case .serving: "Serving"
+        case .paused: "Paused"
         }
     }
 }

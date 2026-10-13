@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
+import SwiftUI
+
+/// A titled group of model rows; hidden when empty.
+struct ModelSection: View {
+    let title: String
+    var footer: String?
+    let rows: [ModelSelectorViewModel.Row]
+    let canSelect: Bool
+    let onSelect: (ModelSelectorViewModel.Row) -> Void
+    let onDelete: (ModelSelectorViewModel.Row) -> Void
+
+    var body: some View {
+        if !rows.isEmpty {
+            Section {
+                ForEach(rows) { row in
+                    ModelRow(row: row, canSelect: canSelect && row.fits, onSelect: onSelect)
+                        .contextMenu {
+                            if row.download.isDownloaded {
+                                Button("Delete Download", systemImage: "trash", role: .destructive) { onDelete(row) }
+                            }
+                        }
+                        .swipeActions {
+                            if row.download.isDownloaded {
+                                Button("Delete Download", systemImage: "trash", role: .destructive) { onDelete(row) }
+                            }
+                        }
+                }
+            } header: {
+                Text(title)
+            } footer: {
+                if let footer { Text(footer) }
+            }
+        }
+    }
+}

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Nalinish Ranjan — SapientKit (see SapientKit/LICENSE)
+// Copyright (c) 2026 OpenHorizon Labs Pvt Ltd — SapientKit (see SapientKit/LICENSE)
 
 import Foundation
 import Synchronization
 import Testing
 @testable import SapientKit
 
-/// Answers handoff URLs the way SapientChat does: reads the request, then
+/// Answers handoff URLs the way SapientStudio does: reads the request, then
 /// opens the callback with `?status=…&body=<base64url>` appended.
 final class FakeSapientApp: Sendable {
     let requests = Mutex<[(path: String, method: String, body: Data?, source: String?)]>([])
@@ -66,11 +66,11 @@ struct HandoffTests {
         }
     }
 
-    @Test func cancellingInSapientChatThrowsCancelled() async {
+    @Test func cancellingInSapientStudioThrowsCancelled() async {
         let transport = HandoffTransport(callbackScheme: "myapp") { _ in true }
         let sapient = SapientClient(transport: transport)
         let reply = Task { try await sapient.health() }
-        // Wait for the request to be pending, then cancel it as SapientChat would.
+        // Wait for the request to be pending, then cancel it as SapientStudio would.
         try? await Task.sleep(for: .milliseconds(50))
         let url = transport.requestURL(id: "unused", method: "GET", path: "/v1/health", body: nil)
         #expect(url.absoluteString.hasPrefix("sapient://x-callback-url/request?"))

@@ -6,8 +6,8 @@ model should run and who manages it.
 | | Model runs in | You manage downloads and memory | Best for |
 | --- | --- | --- | --- |
 | [1. Embed the engine](#1-embed-the-engine-sapient-swift) | your app's process | yes | an app that ships its own on-device AI |
-| [2. Call Sapient Chat with SapientKit](#2-call-sapient-chat-with-sapientkit) | Sapient Chat | no, Sapient Chat does | iOS/macOS apps that share one set of models |
-| [3. Plain HTTP](#3-plain-http-any-language) | Sapient Chat | no | scripts, servers, other platforms, OpenAI clients |
+| [2. Call Sapient Studio with SapientKit](#2-call-sapient-studio-with-sapientkit) | Sapient Studio | no, Sapient Studio does | iOS/macOS apps that share one set of models |
+| [3. Plain HTTP](#3-plain-http-any-language) | Sapient Studio | no | scripts, servers, other platforms, OpenAI clients |
 
 ## 1. Embed the engine (`sapient-swift`)
 
@@ -88,7 +88,7 @@ own history, use `chatStreamAsync(userMessage:listener:)` / `chatAsync(userMessa
 
 Errors are `SapientError` (e.g. `.Cancelled`).
 
-### Lessons from Sapient Chat
+### Lessons from Sapient Studio
 
 - **Memory:** check `availableMemoryBytes()` before loading; iOS ends an app that
   goes over its limit. 4/8-bit (GGUF) models are memory-mapped and cheapest.
@@ -102,12 +102,12 @@ Errors are `SapientError` (e.g. `.Cancelled`).
 - **Thermals:** forward `ProcessInfo.thermalStateDidChangeNotification` to
   `setThermalLevel`; prefer the GPU alone while the device is hot.
 
-## 2. Call Sapient Chat with SapientKit
+## 2. Call Sapient Studio with SapientKit
 
-Let Sapient Chat hold the models (downloaded once, shared by every app, up to
+Let Sapient Studio hold the models (downloaded once, shared by every app, up to
 four in memory) and ask it to run them. `SapientKit` (in this repo) wraps the
 API with Swift types, over HTTP or, on the same iPhone, a URL handoff that brings
-Sapient Chat to the front and returns the result to your app.
+Sapient Studio to the front and returns the result to your app.
 
 Add it by URL: Xcode → File → Add Package Dependencies →
 `https://github.com/NRanjan-17/SapientChat`, product **SapientKit** (MIT).
@@ -127,7 +127,7 @@ Setup (URL scheme, `onOpenURL`, API key) and the full method list:
 
 ## 3. Plain HTTP (any language)
 
-Turn on Settings → API Server in Sapient Chat. It serves `sapient serve`'s
+Turn on Settings → API Server in Sapient Studio. It serves `sapient serve`'s
 OpenAI-compatible API on port 11435 (Endpoints & Access shows the addresses and
 ready-to-copy commands for every route).
 
@@ -154,12 +154,26 @@ print(reply.choices[0].message.content)
 
 Keep in mind:
 
-- The server answers while Sapient Chat is open. With "Keep running in
+- The server answers while Sapient Studio is open. With "Keep running in
   background" (Debug/sideload builds) it also answers with the app closed, on
   the CPU, at a battery cost.
 - Set an API key before allowing other devices on a shared network; clients
   then send `Authorization: Bearer <key>`.
-- A reply is capped at 512 tokens; `temperature` and `tools` aren't applied per
-  request.
-- Every request is in Sapient Chat's request log (Settings → Request Log), with
+- A reply has no cap of its own: it runs until the model ends its turn,
+  `max_tokens`, a stop sequence, or the end of the model's context window.
+  `temperature` isn't applied per request (it's a model setting).
+- `tools`, `tool_choice` and `response_format` (`json_object`, `json_schema`)
+  are accepted on `/v1/chat/completions`, best effort: the engine can't
+  constrain a reply, so they're asked for in the prompt and the reply is read
+  back. A tool call comes back as `tool_calls` with `finish_reason:
+  "tool_calls"`; when JSON was asked for, the response carries
+  `"sapient": {"json_valid": true|false}`. Such replies arrive whole, not
+  token by token. Models this small miss the format sometimes; check
+  `json_valid` and retry.
+- `GET /v1/activity` says what the app is doing right now, as the Dynamic
+  Island would show it (`active`, `phase`, `label`, `detail`, `progress`,
+  `tokens`, `tokens_per_second`, `requests`, …). It isn't logged or counted,
+  and needs no API key from the same device. Sapient Island, the Mac notch
+  app, is built on it.
+- Every request is in Sapient Studio's request log (Settings → Request Log), with
   the prompt, reply and timing.

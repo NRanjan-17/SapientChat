@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Nalinish Ranjan — SapientKit (see SapientKit/LICENSE)
+// Copyright (c) 2026 OpenHorizon Labs Pvt Ltd — SapientKit (see SapientKit/LICENSE)
 
 import Foundation
 import Synchronization
@@ -7,16 +7,16 @@ import Synchronization
 import UIKit
 #endif
 
-/// Hands requests to SapientChat on the same device by opening a
-/// `sapient://` URL. SapientChat comes to the front, runs the request, and
+/// Hands requests to SapientStudio on the same device by opening a
+/// `sapient://` URL. SapientStudio comes to the front, runs the request, and
 /// opens your app's callback URL with the result. Use this on iPhone, where
-/// iOS suspends SapientChat (and its server) while your app is in front.
+/// iOS suspends SapientStudio (and its server) while your app is in front.
 ///
 /// Setup in your app:
 /// 1. Register a URL scheme (Target → Info → URL Types), e.g. `myapp`, and
 ///    pass it as `callbackScheme`.
 /// 2. Forward incoming URLs: `.onOpenURL { client.handle($0) }`.
-/// 3. To check SapientChat is installed first, add `sapient` to
+/// 3. To check SapientStudio is installed first, add `sapient` to
 ///    `LSApplicationQueriesSchemes` in your Info.plist.
 ///
 /// Responses don't stream over a handoff.
@@ -24,7 +24,7 @@ public final class HandoffTransport: SapientTransport {
     public typealias Opener = @Sendable (URL) async -> Bool
 
     public let callbackScheme: String
-    /// Your app's name, shown in SapientChat while the request runs.
+    /// Your app's name, shown in SapientStudio while the request runs.
     public let appName: String?
     public let apiKey: String?
     private let open: Opener
@@ -41,14 +41,14 @@ public final class HandoffTransport: SapientTransport {
     }
 
     #if canImport(UIKit)
-    /// Opens SapientChat with `UIApplication`.
+    /// Opens SapientStudio with `UIApplication`.
     public convenience init(callbackScheme: String, appName: String? = nil, apiKey: String? = nil) {
         self.init(callbackScheme: callbackScheme, appName: appName, apiKey: apiKey) { @MainActor url in
             await UIApplication.shared.open(url, options: [:])
         }
     }
 
-    /// Whether SapientChat is installed (needs `sapient` in your app's
+    /// Whether SapientStudio is installed (needs `sapient` in your app's
     /// `LSApplicationQueriesSchemes`).
     @MainActor
     public static var isSapientInstalled: Bool {
@@ -74,7 +74,7 @@ public final class HandoffTransport: SapientTransport {
     }
 
     /// Completes the request a callback URL answers. Returns false for URLs
-    /// that aren't SapientChat callbacks, so you can handle those yourself.
+    /// that aren't SapientStudio callbacks, so you can handle those yourself.
     @discardableResult
     public func handle(_ url: URL) -> Bool {
         guard url.scheme == callbackScheme, url.host() == Self.callbackHost,
@@ -102,7 +102,7 @@ public final class HandoffTransport: SapientTransport {
         return true
     }
 
-    /// Requests waiting for SapientChat's callback.
+    /// Requests waiting for SapientStudio's callback.
     var pendingIDsForTesting: [String] {
         pending.withLock { Array($0.keys) }
     }
@@ -138,7 +138,7 @@ public final class HandoffTransport: SapientTransport {
     }
 }
 
-/// URL-safe base64 without padding (RFC 4648 §5), as SapientChat uses.
+/// URL-safe base64 without padding (RFC 4648 §5), as SapientStudio uses.
 enum Base64URL {
     static func encode(_ data: Data) -> String {
         data.base64EncodedString()

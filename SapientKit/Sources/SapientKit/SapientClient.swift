@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Nalinish Ranjan — SapientKit (see SapientKit/LICENSE)
+// Copyright (c) 2026 OpenHorizon Labs Pvt Ltd — SapientKit (see SapientKit/LICENSE)
 
 import Foundation
 
-/// Calls SapientChat, which loads and runs models on the device, from any
+/// Calls SapientStudio, which loads and runs models on the device, from any
 /// app: see the catalog, download, load and unload models, and chat.
 ///
-///     // Another device, or beside SapientChat on iPad:
+///     // Another device, or beside SapientStudio on iPad:
 ///     let sapient = SapientClient.http(URL(string: "http://192.168.1.20:11435")!)
 ///
-///     // Same iPhone (SapientChat comes to the front for each request):
+///     // Same iPhone (SapientStudio comes to the front for each request):
 ///     let sapient = SapientClient.handoff(callbackScheme: "myapp", appName: "My App")
 ///     // …and in your App: .onOpenURL { sapient.handle($0) }
 ///
@@ -21,7 +21,7 @@ import Foundation
 public final class SapientClient: Sendable {
     public let transport: any SapientTransport
 
-    /// SapientChat's API server port.
+    /// SapientStudio's API server port.
     public static let defaultPort = 11435
 
     public init(transport: any SapientTransport) {
@@ -53,12 +53,12 @@ public final class SapientClient: Sendable {
     }
 
     #if canImport(UIKit)
-    /// By URL handoff to SapientChat on this device.
+    /// By URL handoff to SapientStudio on this device.
     public static func handoff(callbackScheme: String, appName: String? = nil, apiKey: String? = nil) -> SapientClient {
         SapientClient(transport: HandoffTransport(callbackScheme: callbackScheme, appName: appName ?? Self.appName, apiKey: apiKey))
     }
 
-    /// The server on this device when it answers (SapientChat in front, e.g.
+    /// The server on this device when it answers (SapientStudio in front, e.g.
     /// beside your app on iPad), otherwise a URL handoff.
     public static func automatic(
         callbackScheme: String, appName: String? = nil, apiKey: String? = nil,
@@ -71,8 +71,8 @@ public final class SapientClient: Sendable {
     }
     #endif
 
-    /// Completes a handoff from the callback URL SapientChat opened. Call it
-    /// from `.onOpenURL`; returns false for URLs that aren't SapientChat's.
+    /// Completes a handoff from the callback URL SapientStudio opened. Call it
+    /// from `.onOpenURL`; returns false for URLs that aren't SapientStudio's.
     @discardableResult
     public func handle(_ url: URL) -> Bool {
         switch transport {
@@ -88,7 +88,7 @@ public final class SapientClient: Sendable {
         try await get("/v1/health")
     }
 
-    /// Whether SapientChat answers, without touching any model.
+    /// Whether SapientStudio answers, without touching any model.
     public func ping() async throws -> Ping {
         try await get("/v1/ping")
     }
@@ -167,7 +167,7 @@ public final class SapientClient: Sendable {
         }
     }
 
-    /// Downloads if needed and loads into memory. SapientChat keeps a few
+    /// Downloads if needed and loads into memory. SapientStudio keeps a few
     /// models loaded, releasing the least recently used to make room.
     public func load(_ model: String) async throws -> ModelActionResult {
         try await post("/v1/models/load", ModelActionBody(model: model))

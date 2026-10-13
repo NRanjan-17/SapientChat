@@ -1,25 +1,26 @@
-Sapient Chat
-Copyright (C) 2026 Nalinish Ranjan
+Sapient Studio
+Copyright (C) 2026 OpenHorizon Labs Pvt Ltd
+Developed by contributors Nalinish Ranjan and Saidev Dhal.
 
 ------------------------------------------------------------------------------
 Dual licensing
 ------------------------------------------------------------------------------
 
-Sapient Chat is dual-licensed. You may use it under EITHER of the following, at
+Sapient Studio is dual-licensed. You may use it under EITHER of the following, at
 your option:
 
   (1) The GNU Affero General Public License, version 3 (AGPL-3.0-only), the
       terms of which are in the LICENSE file at the root of this repository and
       at <https://www.gnu.org/licenses/agpl-3.0.txt>; OR
 
-  (2) A commercial license from Nalinish Ranjan, for uses that are not
+  (2) A commercial license from OpenHorizon Labs Pvt Ltd, for uses that are not
       compatible with the AGPL-3.0. See COMMERCIAL-LICENSE.md.
 
-Unless you have a separate commercial license agreement with Nalinish Ranjan,
+Unless you have a separate commercial license agreement with OpenHorizon Labs Pvt Ltd,
 your use is governed by the AGPL-3.0-only.
 
 The SapientKit package (SapientKit/) is licensed separately under the MIT
-License (SapientKit/LICENSE), so any app may use it to talk to Sapient Chat.
+License (SapientKit/LICENSE), so any app may use it to talk to Sapient Studio.
 
 ------------------------------------------------------------------------------
 AGPL-3.0 warranty notice
@@ -42,8 +43,8 @@ SAPIENT engine (sapient-swift, SapientFFI.xcframework)
   Copyright (C) 2026 OpenHorizon Labs Pvt Ltd
   AGPL-3.0-only OR commercial license from OpenHorizon Labs Pvt Ltd.
   https://github.com/SkidGod4444/sapient
-  A commercial license for Sapient Chat does not include rights to the SAPIENT
-  engine: distributing Sapient Chat outside the AGPL-3.0 also needs a
+  A commercial license for Sapient Studio does not include rights to the SAPIENT
+  engine: distributing Sapient Studio outside the AGPL-3.0 also needs a
   commercial license for the engine from OpenHorizon Labs Pvt Ltd.
 
 LobeHub Icons (model maker logos in Assets.xcassets/ModelLogos)

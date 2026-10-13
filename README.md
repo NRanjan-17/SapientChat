@@ -1,4 +1,4 @@
-# Sapient Chat
+# Sapient Studio
 
 Run large language models on iPhone and iPad, entirely on the device, with
 [SAPIENT](https://github.com/SkidGod4444/sapient), a pure-Rust edge inference
@@ -34,8 +34,8 @@ then run offline.
 
 ## Build and run
 
-1. Open `SapientChat.xcodeproj`.
-2. Select the **SapientChat** scheme, set your team under Signing & Capabilities
+1. Open `SapientStudio.xcodeproj`.
+2. Select the **SapientStudio** scheme, set your team under Signing & Capabilities
    (app and `Activity` targets).
 3. Run on a device or simulator.
 
@@ -46,13 +46,35 @@ which Xcode resolves on first build.
 Tests:
 
 ```bash
-xcodebuild test -project SapientChat.xcodeproj -scheme SapientChat \
-  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:SapientChatTests
+xcodebuild test -project SapientStudio.xcodeproj -scheme SapientStudio \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:SapientStudioTests
 swift test    # SapientKit, from the repository root
 ```
 
 Debug builds accept `-SapientTab chats|models|benchmark|settings` (Edit Scheme →
 Arguments) to open a tab, handy for screenshots.
+
+## On a Mac
+
+Sapient Studio runs on Apple silicon Macs as an iPad app ("Designed for
+iPad"): pick **My Mac (Designed for iPad)** as the run destination in Xcode.
+The engine ships no Mac Catalyst build, so that is the way in.
+
+A Mac has no Dynamic Island, and an iPad app can't draw outside its own
+window, so the notch has its own small native app, **Sapient Island**. It
+hangs from the camera notch and shows what Sapient Studio is doing (serving,
+a request generating, a download, a benchmark); put the pointer on it for the
+details. It reads `GET /v1/activity` from Sapient Studio's local server, so
+turn the server on first (Settings → API Server).
+
+```bash
+cd SapientIsland
+swift run -c release                       # port 11435
+swift run -c release SapientIsland --port 8080
+```
+
+It has no Dock icon; right-click the Island to quit. On a display without a
+notch it sits at the top centre of the menu bar.
 
 ## Settings worth knowing
 
@@ -79,7 +101,7 @@ Arguments) to open a tab, handy for screenshots.
 ## Project layout
 
 ```
-SapientChat/          the app
+SapientStudio/          the app
   App/                entry point, menu commands
   Models/             value types (PhoneModel, ComputePreference, …)
   Services/           engine, downloads, Live Activities, background work
@@ -88,8 +110,8 @@ SapientChat/          the app
   Views/              SwiftUI
 Activity/             Live Activity widget extension
 Shared/               types used by both (activity attributes)
-SapientKit/           Swift package for other apps to call Sapient Chat
-SapientChatTests/     unit tests (Swift Testing)
+SapientKit/           Swift package for other apps to call Sapient Studio
+SapientStudioTests/     unit tests (Swift Testing)
 docs/                 integration guide
 ```
 
@@ -101,16 +123,17 @@ to answer API requests on your network.
 
 ## License
 
-Sapient Chat is **dual-licensed** by Nalinish Ranjan: the
+Sapient Studio is **dual-licensed** by OpenHorizon Labs Pvt Ltd: the
 [GNU AGPL-3.0-only](LICENSE) **or** a [commercial license](COMMERCIAL-LICENSE.md)
 for uses that aren't compatible with the AGPL (closed source, rebranding).
 [SapientKit](SapientKit/) is [MIT](SapientKit/LICENSE), so any app can use it to
-talk to Sapient Chat. Every source file carries an SPDX header.
+talk to Sapient Studio. Every source file carries an SPDX header. Developed by
+contributors Nalinish Ranjan and Saidev Dhal.
 
 Third-party parts (details in [NOTICE](NOTICE)):
 
 - The **SAPIENT engine** is AGPL-3.0-only or commercial from OpenHorizon Labs Pvt
-  Ltd. Using Sapient Chat outside the AGPL also needs the engine's commercial
+  Ltd. Using Sapient Studio outside the AGPL also needs the engine's commercial
   license. "SAPIENT" and its logo are OpenHorizon Labs trademarks.
 - Model maker logos come from [LobeHub Icons](https://github.com/lobehub/lobe-icons)
   (MIT) and are trademarks of their owners.

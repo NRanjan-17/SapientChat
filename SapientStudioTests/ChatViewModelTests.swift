@@ -1,0 +1,304 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
+import Foundation
+import SwiftData
+import Testing
+@testable import SapientStudio
+
+@MainActor
+struct ChatViewModelTests {
+    let container: ModelContainer
+    let store: SwiftDataConversationStore
+    let service = ControlledChatService()
+
+    init() throws {
+        container = try makeContainer()
+        store = SwiftDataConversationStore(context: container.mainContext)
+    }
+
+    private func makeChat(
+        model: PhoneModel = TestModels.small,
+        memory: FixedMemory = FixedMemory(),
+        storage: FakeStorage = downloadedStorage(),
+        downloads: (any ModelDownloadService)? = nil,
+        saveInterval: Duration = .seconds(60)
+    ) -> ChatViewModel {
+        let services = makeServices(chat: service, memory: memory, storage: storage, downloads: downloads)
+        let conversation = store.createConversation(model: model.alias)
+        let device = DeviceStatus(memoryService: memory, thermalService: SilentThermalService())
+        return ChatViewModel(conversation: conversation, services: services, store: store, device: device, saveInterval: saveInterval)
+    }
+
+    private func send(_ text: String, in chat: ChatViewModel) {
+        chat.draft = text
+        chat.send()
+    }
+
+    /// What a fresh context on the same container sees: only saved data.
+    private func savedTexts() throws -> [String] {
+        let fresh = ModelContext(container)
+        let chats = try fresh.fetch(FetchDescriptor<Conversation>())
+        return chats.first?.orderedMessages.map(\.text) ?? []
+    }
+
+    @Test func streamsTheReplyAndSavesTheTurn() async throws {
+        let chat = makeChat()
+        send("Hi there", in: chat)
+        #expect(await eventually { await service.replyCount == 1 })
+
+        await service.send("Hel", toReply: 0)
+        await service.send("lo", toReply: 0)
+        await service.finishReply(0)
+
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["Hi there", "Hello"])
+        #expect(try savedTexts() == ["Hi there", "Hello"])
+        #expect(chat.conversation.title == "Hi there", "the first message names the chat")
+        #expect(chat.backendLabel == "test-backend")
+    }
+
+    @Test func everyTurnSendsTheWholeHistory() async {
+        let chat = makeChat()
+        send("First", in: chat)
+        #expect(await eventually { await service.replyCount == 1 })
+        await service.send("One", toReply: 0)
+        await service.finishReply(0)
+        #expect(await eventually { chat.status == .idle })
+
+        send("Second", in: chat)
+        #expect(await eventually { await service.replyCount == 2 })
+        let histories = await service.histories
+        #expect(await service.replyModels == [TestModels.small.alias, TestModels.small.alias])
+        #expect(histories[1].map(\.text) == ["First", "One", "Second"])
+        #expect(histories[1].map(\.role) == [.user, .assistant, .user])
+        // The model is loaded once and reused.
+        #expect(await service.loadedModels == [TestModels.small.alias])
+    }
+
+    @Test func aStreamingReplyIsSavedWhileItArrives() async throws {
+        let chat = makeChat(saveInterval: .zero)
+        send("Hi", in: chat)
+        #expect(await eventually { await service.replyCount == 1 })
+        await service.send("Partial", toReply: 0)
+
+        // Not finished yet, but already on disk: a crash now keeps it.
+        #expect(await eventually { (try? savedTexts()) == ["Hi", "Partial"] })
+    }
+
+    @Test func stopBeforeTheFirstTokenLeavesNoEmptyReply() async throws {
+        let chat = makeChat()
+        send("Hi", in: chat)
+        #expect(await eventually { chat.status == .generating })
+
+        chat.stop()
+
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["Hi"])
+        #expect(try savedTexts() == ["Hi"])
+    }
+
+    @Test func refusesAModelThatCannotFitAndKeepsTheMessageForRetry() async throws {
+        let chat = makeChat(model: TestModels.big, memory: tightMemory)
+        send("Hi", in: chat)
+
+        #expect(await eventually {
+            if case .failed(let problem) = chat.status { problem.message.contains("smollm2-1.7b") } else { false }
+        })
+        #expect(chat.messages.map(\.text) == ["Hi"])
+        #expect(await service.loadedModels.isEmpty, "nothing was loaded")
+        #expect(chat.canRegenerate, "the user can retry, e.g. after picking a smaller model")
+    }
+
+    @Test func regenerateReplacesTheLastReply() async throws {
+        let chat = makeChat()
+        send("Hi", in: chat)
+        #expect(await eventually { await service.replyCount == 1 })
+        await service.send("Old", toReply: 0)
+        await service.finishReply(0)
+        #expect(await eventually { chat.status == .idle })
+
+        chat.regenerate()
+        #expect(await eventually { await service.replyCount == 2 })
+        await service.send("New", toReply: 1)
+        await service.finishReply(1)
+
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["Hi", "New"])
+        #expect(try savedTexts() == ["Hi", "New"])
+        #expect(await service.histories[1].map(\.text) == ["Hi"], "the old reply is not sent back")
+    }
+
+    @Test func firstUseShowsDownloadThenLoadThenReplies() async throws {
+        let storage = FakeStorage()
+        let log = EventLog()
+        let chat = makeChat(storage: storage, downloads: FakeDownloader(storage: storage, log: log))
+        send("Hi", in: chat)
+
+        #expect(await eventually {
+            if case .downloading(_, let progress) = chat.status { progress.fraction ?? 0 > 0 } else { false }
+        })
+        #expect(await eventually { chat.status == .generating })
+        #expect(await log.events == ["download \(TestModels.small.alias)"])
+        #expect(await service.loadedModels() == [TestModels.small.alias])
+    }
+
+    @Test func cancellingTheFirstDownloadKeepsTheMessageForRetry() async throws {
+        let storage = FakeStorage()
+        let chat = makeChat(storage: storage, downloads: FakeDownloader(storage: storage, hangs: true))
+        send("Hi", in: chat)
+        #expect(await eventually { if case .downloading = chat.status { true } else { false } })
+
+        chat.stop()
+
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["Hi"])
+        #expect(chat.canRegenerate)
+        #expect(await service.loadedModels().isEmpty)
+    }
+
+    @Test func selectingAModelIsSavedOnTheChat() {
+        let chat = makeChat()
+        chat.selectModel(TestModels.big.alias)
+        #expect(chat.conversation.modelAlias == TestModels.big.alias)
+        #expect(chat.modelName == "smollm2-1.7b")
+    }
+
+    @Test func titlesComeFromTheFirstLineAndAreShortened() {
+        #expect(ChatViewModel.title(from: "Hello\nsecond line") == "Hello")
+        let long = String(repeating: "a", count: 60)
+        #expect(ChatViewModel.title(from: long) == String(repeating: "a", count: 40) + "…")
+    }
+}
+
+@MainActor
+struct MemoryFitTests {
+    @Test func estimatesFollowTheStorageFormat() {
+        let q4 = PhoneModel(alias: "a", repoId: "a", params: "1.7B Q4_K_M", billions: 1.7)
+        let full = PhoneModel(alias: "b", repoId: "b", params: "1.7B", billions: 1.7)
+        // 1.7e9 × bytes per parameter + 0.6 GB; compared loosely (floating point).
+        #expect(q4.estimatedMemoryBytes.distance(to: 1_620_000_000).magnitude < 1_000)
+        #expect(full.estimatedMemoryBytes.distance(to: 2_810_000_000).magnitude < 1_000)
+    }
+
+    @Test func downloadSizeIsTheMeasuredFileOrAnEstimate() {
+        let known = PhoneModel(alias: "a", repoId: "unsloth/SmolLM2-135M-Instruct-GGUF", params: "135M Q4_K_M", billions: 0.135)
+        let unknownQ4 = PhoneModel(alias: "b", repoId: "b", params: "1B Q4_K_M", billions: 1)
+        let unknownFull = PhoneModel(alias: "c", repoId: "c", params: "1B", billions: 1)
+        #expect(known.estimatedDownloadBytes == 105_000_000)
+        #expect(known.downloadSizeText == "105 MB")
+        #expect(unknownQ4.downloadSizeText == "About 800 MB")
+        #expect(unknownQ4.estimatedDownloadBytes == 800_000_000)
+        #expect(unknownFull.estimatedDownloadBytes == 2_000_000_000)
+    }
+
+    @Test func memoryFreedByTheCurrentModelCounts() {
+        let full = TestModels.big
+        #expect(full.fitProblem(availableBytes: 2_000_000_000) != nil)
+        #expect(full.fitProblem(availableBytes: 2_000_000_000, reclaimableBytes: 900_000_000) == nil)
+        #expect(full.fitProblem(availableBytes: nil) == nil, "no known limit, e.g. the simulator")
+    }
+}
+
+struct PhoneModelTests {
+    @Test(arguments: [
+        ("135M Q4_K_M", 0.135),
+        ("1.5B", 1.5),
+        ("0.5B Q4_K_M", 0.5),
+    ])
+    func parsesCatalogSizes(params: String, billions: Double) {
+        #expect(PhoneModel.billions(fromParams: params) == billions)
+    }
+
+    @Test(arguments: ["47B-A13B Q4_K_M", "106B-A12B", ""])
+    func rejectsSizesItCannotParse(params: String) {
+        #expect(PhoneModel.billions(fromParams: params) == nil)
+    }
+
+    @Test func displayNameAndFormat() {
+        #expect(TestModels.small.displayName == "smollm2-135m-q4")
+        #expect(TestModels.small.format == "4-bit")
+        #expect(TestModels.big.format == "Full precision")
+    }
+}
+
+/// A downloader that fails the way SAPIENT does with no network.
+struct OfflineDownloader: ModelDownloadService {
+    struct EngineError: Error, CustomStringConvertible {
+        var description: String { #"Load(reason: "Failed to download model 'm': client error (Connect): dns error: failed to lookup address information")"# }
+    }
+    func download(model: String, onProgress: @escaping @Sendable (DownloadProgress) -> Void) async throws { throw EngineError() }
+    func downloadSize(model: String) async throws -> UInt64 { 0 }
+}
+
+@MainActor
+struct ChatEditAndProblemTests {
+    let container: ModelContainer
+    let store: SwiftDataConversationStore
+    let service = ControlledChatService()
+
+    init() throws {
+        container = try makeContainer()
+        store = SwiftDataConversationStore(context: container.mainContext)
+    }
+
+    private func makeChat(storage: FakeStorage = downloadedStorage(), downloads: (any ModelDownloadService)? = nil) -> ChatViewModel {
+        let services = makeServices(chat: service, storage: storage, downloads: downloads)
+        let conversation = store.createConversation(model: TestModels.small.alias)
+        let device = DeviceStatus(memoryService: FixedMemory(), thermalService: SilentThermalService())
+        return ChatViewModel(conversation: conversation, services: services, store: store, device: device, saveInterval: .seconds(60))
+    }
+
+    @Test func aFailedDownloadPopsUpWhatToDo() async throws {
+        let chat = makeChat(storage: FakeStorage(), downloads: OfflineDownloader())
+        chat.draft = "Hi"
+        chat.send()
+        #expect(await eventually { chat.alert != nil })
+        #expect(chat.alert?.kind == .noNetwork)
+        #expect(chat.alert?.message.contains("tap Try Again") == true)
+        if case .failed(let problem) = chat.status { #expect(problem.kind == .noNetwork) } else { Issue.record("expected failed") }
+        #expect(chat.messages.map(\.text) == ["Hi"], "the prompt stays for Try Again")
+    }
+
+    @Test func editingAPromptReplacesItAndEverythingAfter() async throws {
+        let chat = makeChat()
+        chat.draft = "What is 2+2?"
+        chat.send()
+        #expect(await eventually { await service.replyCount == 1 })
+        await service.send("4", toReply: 0)
+        await service.finishReply(0)
+        #expect(await eventually { chat.status == .idle })
+        chat.draft = "And 3+3?"
+        chat.send()
+        #expect(await eventually { await service.replyCount == 2 })
+        await service.send("6", toReply: 1)
+        await service.finishReply(1)
+        #expect(await eventually { chat.status == .idle })
+
+        let first = try #require(chat.messages.first)
+        chat.edit(first.id, to: "What is 5+5?")
+        #expect(await eventually { await service.replyCount == 3 })
+        #expect(await service.histories.last?.map(\.text) == ["What is 5+5?"], "the model sees only the edited prompt")
+        await service.send("10", toReply: 2)
+        await service.finishReply(2)
+        #expect(await eventually { chat.status == .idle })
+        #expect(chat.messages.map(\.text) == ["What is 5+5?", "10"])
+        #expect(chat.conversation.orderedMessages.map(\.text) == ["What is 5+5?", "10"])
+        #expect(chat.conversation.title == "What is 5+5?", "the title follows the edited first message")
+    }
+
+    @Test func repliesCantBeEditedAndNothingIsEditedWhileBusy() async throws {
+        let chat = makeChat()
+        chat.draft = "Hi"
+        chat.send()
+        #expect(await eventually { await service.replyCount == 1 })
+        #expect(!chat.canEdit)
+        chat.edit(chat.messages[0].id, to: "Changed")
+        #expect(chat.messages[0].text == "Hi", "ignored while a reply is running")
+        await service.send("Hello", toReply: 0)
+        await service.finishReply(0)
+        #expect(await eventually { chat.status == .idle })
+        chat.edit(chat.messages[1].id, to: "Not mine")
+        #expect(chat.messages.map(\.text) == ["Hi", "Hello"], "only your own messages can be edited")
+    }
+}

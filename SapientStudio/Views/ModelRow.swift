@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+
+import SwiftUI
+
+/// One model in a chat's model picker: the maker's logo, name, spec chips and
+/// download state, with a checkmark on the chat's current model.
+struct ModelRow: View {
+    let row: ModelSelectorViewModel.Row
+    let canSelect: Bool
+    let onSelect: (ModelSelectorViewModel.Row) -> Void
+
+    var body: some View {
+        Button(action: select) {
+            HStack(spacing: 12) {
+                ModelTile(model: row.model, isLoaded: row.isLoaded, size: 40)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(row.model.displayName)
+                        .font(.headline)
+                        .lineLimit(2)
+                    ModelSpecChips(model: row.model)
+                    status
+                        .font(.caption)
+                }
+                .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
+                Spacer(minLength: 8)
+                if row.isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(row.model.tint)
+                        .accessibilityLabel("Selected")
+                }
+            }
+            .padding(.vertical, 4)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSelect)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var status: some View {
+        if !row.fits {
+            IconText("Too large for the memory free right now", systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+        } else if row.isLoaded {
+            IconText("In memory", systemImage: "memorychip.fill")
+                .foregroundStyle(.tint)
+        } else {
+            switch row.download {
+            case .downloaded(let bytes):
+                IconText("Downloaded · \(Format.bytes(bytes))", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            case .partial(let bytes):
+                IconText("Paused at \(Format.bytes(bytes)) · resumes when used", systemImage: "arrow.down.circle.dotted")
+                    .foregroundStyle(.secondary)
+            case .notDownloaded:
+                IconText("\(row.model.downloadSizeText) download when first used", systemImage: "arrow.down.circle")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func select() {
+        onSelect(row)
+    }
+}
