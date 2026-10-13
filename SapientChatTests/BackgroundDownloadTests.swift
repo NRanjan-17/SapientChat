@@ -120,7 +120,7 @@ struct BackgroundDownloadTests {
         coordinator.background = scheduler
         coordinator.liveActivities = activities
         try await coordinator.download(TestModels.small.alias) { _ in }
-        #expect(activities.started.map(\.title) == ["Downloads"])
+        #expect(activities.started.map(\.title) == ["Sapient"])
     }
 
     @Test func severalDownloadsShareOneBackgroundTaskWithCombinedProgress() async throws {
