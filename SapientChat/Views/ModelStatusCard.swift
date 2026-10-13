@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -58,7 +58,7 @@ struct ModelStatusCard: View {
         VStack(alignment: .leading, spacing: 8, content: content)
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.regularMaterial, in: .rect(cornerRadius: 18))
+            .glassSurface(in: .rect(cornerRadius: 18))
             .padding(.horizontal)
             .transition(.move(edge: .bottom).combined(with: .opacity))
     }

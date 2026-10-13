@@ -170,5 +170,10 @@ Keep in mind:
   `"sapient": {"json_valid": true|false}`. Such replies arrive whole, not
   token by token. Models this small miss the format sometimes; check
   `json_valid` and retry.
+- `GET /v1/activity` says what the app is doing right now, as the Dynamic
+  Island would show it (`active`, `phase`, `label`, `detail`, `progress`,
+  `tokens`, `tokens_per_second`, `requests`, …). It isn't logged or counted,
+  and needs no API key from the same device. Sapient Island, the Mac notch
+  app, is built on it.
 - Every request is in Sapient Studio's request log (Settings → Request Log), with
   the prompt, reply and timing.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -75,6 +75,7 @@ struct SettingsTab: View {
             .navigationTitle("Settings")
             // The same title row as Chats and Benchmark.
             .toolbarTitleDisplayMode(.inlineLarge)
+            .pageTitle("Settings", columnWidth: 720)
         }
     }
 

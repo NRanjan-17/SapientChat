@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Sapient
 
@@ -19,8 +19,14 @@ nonisolated final class StreamListener: TokenListener, @unchecked Sendable {
         // backgrounding): tell the engine to stop.
         if case .terminated = continuation.yield(token) { return false }
         // Replies have no length cap, so a model stuck repeating itself
-        // would otherwise run to the end of its context window.
-        return !loops.isLooping(after: token)
+        // would otherwise run to the end of its context window. The stream
+        // ends with an error that says so, so nobody takes a cut-off reply
+        // for a finished one.
+        if loops.isLooping(after: token) {
+            continuation.finish(throwing: ChatServiceError.stoppedRepeating)
+            return false
+        }
+        return true
     }
 }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Foundation
 import SwiftData
@@ -79,6 +79,7 @@ actor ControlledChatService {
 
     func send(_ token: String, toReply index: Int) { replies[index].yield(token) }
     func finishReply(_ index: Int) { replies[index].finish() }
+    func failReply(_ index: Int, with error: any Error) { replies[index].finish(throwing: error) }
 }
 
 extension ControlledChatService: ChatService {}

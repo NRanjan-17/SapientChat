@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -135,6 +135,9 @@ struct ChatView: View {
 
     /// Shown while typing, and whenever the chat has used most of its window.
     private var contextFootnote: String? {
+        if viewModel.stoppedRepeating && !viewModel.isBusy {
+            return "Stopped: the reply was repeating itself"
+        }
         let dropped = viewModel.droppedFromContext
         if dropped > 0 {
             return "Long chat: the model no longer sees the oldest \(dropped == 1 ? "message" : "\(dropped) messages")"
@@ -145,6 +148,7 @@ struct ChatView: View {
     }
 
     private var contextIsNearlyFull: Bool {
+        if viewModel.stoppedRepeating && !viewModel.isBusy { return true }
         if viewModel.droppedFromContext > 0 { return false }
         let estimate = viewModel.contextEstimate
         guard let window = estimate.window, window > 0 else { return false }
@@ -162,7 +166,7 @@ struct ChatView: View {
     }
 
     private var downloadMessage: String {
-        var text = "This model isn't on your \(UIDevice.current.model) yet."
+        var text = "This model isn't on your \(UIDevice.current.spokenName) yet."
         if let model = viewModel.model {
             text += " Download: \(model.downloadSizeText), once. After that it works offline."
         }

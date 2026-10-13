@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Foundation
 
@@ -333,11 +333,15 @@ nonisolated struct ToolCall: Codable, Equatable, Sendable {
     }
 }
 
-/// SapientChat's note on a structured reply (not part of OpenAI's API):
-/// whether the JSON that was asked for came back.
+/// SapientChat's note on a reply (not part of OpenAI's API): whether the
+/// JSON that was asked for came back, and whether the reply was cut off
+/// for repeating itself.
 nonisolated struct StructuredNote: Codable, Equatable, Sendable {
-    /// The reply is valid JSON.
-    let jsonValid: Bool
+    /// The reply is valid JSON; absent when no JSON was asked for.
+    var jsonValid: Bool?
     /// Required keys of the request's schema that the object lacks.
     var missingKeys: [String]?
+    /// The reply was stopped because it kept repeating the same tokens
+    /// (`finish_reason` is then "length").
+    var stoppedRepeating: Bool?
 }

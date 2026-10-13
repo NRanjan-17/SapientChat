@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -13,7 +13,8 @@ struct SuggestionButton: View {
             Text(text)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
-                .background(.fill.tertiary, in: .rect(cornerRadius: 14))
+                .contentShape(.rect(cornerRadius: 16))
+                .glassSurface(in: .rect(cornerRadius: 16), interactive: true)
         }
         .buttonStyle(.plain)
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -24,7 +24,7 @@ struct EmptyChatView: View {
                 ContentUnavailableView {
                     Label("Chat with \(modelName)", systemImage: "sparkles")
                 } description: {
-                    Text("Everything runs on this \(UIDevice.current.model). Nothing you type leaves the device.")
+                    Text("Everything runs on this \(UIDevice.current.spokenName). Nothing you type leaves the device.")
                 }
                 if let model {
                     modelCard(model)
@@ -57,12 +57,12 @@ struct EmptyChatView: View {
             }
             Spacer(minLength: 8)
             Button("Change", action: onChangeModel)
-                .buttonStyle(.bordered)
+                .buttonStyle(.glass)
                 .disabled(!canChangeModel)
                 .accessibilityLabel("Change Model")
         }
         .padding(12)
-        .background(.fill.quaternary, in: .rect(cornerRadius: 14))
+        .glassSurface(in: .rect(cornerRadius: 16))
     }
 
     private func downloadText(for model: PhoneModel) -> String {

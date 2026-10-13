@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -41,7 +41,7 @@ struct HandoffBanner: View {
     private func card(@ViewBuilder _ content: () -> some View) -> some View {
         HStack(spacing: 12, content: content)
             .padding(12)
-            .background(.regularMaterial, in: .rect(cornerRadius: 16))
+            .glassSurface(in: .rect(cornerRadius: 16))
             .padding(.horizontal)
             .transition(.move(edge: .top).combined(with: .opacity))
     }

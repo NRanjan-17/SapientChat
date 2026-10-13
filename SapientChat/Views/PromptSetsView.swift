@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -198,9 +198,15 @@ struct PromptAnswerRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.red)
             } else {
-                Text(answer.reply.isEmpty ? "(empty)" : answer.reply)
-                    .font(.subheadline)
-                    .textSelection(.enabled)
+                if answer.reply.isEmpty {
+                    Text("(empty)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    // Formatted like a chat reply: code blocks, lists, headings.
+                    MarkdownContentView(text: answer.reply)
+                        .textSelection(.enabled)
+                }
             }
         }
         .padding(.vertical, 2)

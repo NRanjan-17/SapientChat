@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Foundation
 import Synchronization
@@ -37,6 +37,8 @@ final class ServeRouter {
     var onModelPhase: ((String, ModelPhase?) -> Void)?
     /// A client changed a model's temperature or context window.
     var onSettingsChanged: (() -> Void)?
+    /// What the app is doing now, for `GET /v1/activity`.
+    var activity: (() -> ActivitySnapshot)?
     /// Shows chat, completion, download and load requests in the Dynamic Island.
     var liveActivities: any LiveActivityService = NoLiveActivities()
 
@@ -51,6 +53,16 @@ final class ServeRouter {
     /// Answers `request`. `source` names the app that sent it, when known.
     /// - Parameter source: the app that handed the request over by URL.
     func handle(_ request: HTTPRequest, source: String? = nil) async -> HTTPResponse {
+        // The notch helper asks every second. It isn't work for the server,
+        // so it isn't logged or counted, and from this device it needs no
+        // API key (it says nothing a local process couldn't already see).
+        if request.method == "GET", request.path == Self.activityPath {
+            let isLocal = request.remoteAddress.map { ClientIdentity.deviceName($0) == ClientIdentity.thisDevice } ?? true
+            if !isLocal, let apiKey, !apiKey.isEmpty, request.header("Authorization") != "Bearer \(apiKey)" {
+                return .json(ServeErrorBody(error: .init(message: "Invalid API key", type: "authentication_error")), status: 401)
+            }
+            return .json(activity?() ?? .inactive)
+        }
         let client = ClientIdentity.of(request, handoffSource: source)
         let activity = Self.showsActivity(request) ? LiveActivityTracker(
             service: liveActivities,
@@ -491,22 +503,28 @@ final class ServeRouter {
         if structured.isActive {
             let text: String
             let usage: Usage
+            let ended: Finish
             do {
-                (text, usage) = try await Self.collect(events)
+                (text, usage, ended) = try await Self.collect(events)
             } catch {
                 return .json(ServeErrorBody.server(Self.describe(error)), status: 500)
             }
             let message: ServeMessage
             let finish: String
-            var note: StructuredNote?
+            var note = ended.note
             switch structured.interpret(text) {
             case .toolCalls(let calls):
                 message = ServeMessage(role: "assistant", content: "", toolCalls: calls)
                 finish = "tool_calls"
             case .content(let content, let jsonValid, let missingKeys):
                 message = ServeMessage(role: "assistant", content: content)
-                finish = "stop"
-                note = jsonValid.map { StructuredNote(jsonValid: $0, missingKeys: missingKeys.isEmpty ? nil : missingKeys) }
+                finish = ended.reason
+                if let jsonValid {
+                    note = StructuredNote(
+                        jsonValid: jsonValid, missingKeys: missingKeys.isEmpty ? nil : missingKeys,
+                        stoppedRepeating: ended == .repeating ? true : nil
+                    )
+                }
             }
             guard body.stream ?? false else {
                 return .json(ChatCompletionResponse(
@@ -527,11 +545,11 @@ final class ServeRouter {
 
         guard body.stream ?? false else {
             do {
-                let (text, usage) = try await Self.collect(events)
+                let (text, usage, ended) = try await Self.collect(events)
                 return .json(ChatCompletionResponse(
                     id: id, created: created, model: model.alias,
-                    choices: [.init(index: 0, message: ServeMessage(role: "assistant", content: text), finishReason: "stop")],
-                    usage: usage
+                    choices: [.init(index: 0, message: ServeMessage(role: "assistant", content: text), finishReason: ended.reason)],
+                    usage: usage, sapient: ended.note
                 ))
             } catch {
                 return .json(ServeErrorBody.server(Self.describe(error)), status: 500)
@@ -543,7 +561,7 @@ final class ServeRouter {
         return eventStream(events, first: chunk(.init(role: "assistant"))) { event in
             switch event {
             case .text(let text): chunk(.init(content: text))
-            case .done(let usage): chunk(.init(), finish: "stop", usage: usage) + Self.done
+            case .done(let usage, let ended): chunk(.init(), finish: ended.reason, usage: usage, note: ended.note) + Self.done
             }
         }
     }
@@ -569,10 +587,10 @@ final class ServeRouter {
 
         guard body.stream ?? false else {
             do {
-                let (text, usage) = try await Self.collect(events)
+                let (text, usage, ended) = try await Self.collect(events)
                 return .json(CompletionResponse(
                     id: id, created: created, model: model.alias,
-                    choices: [.init(index: 0, text: text, finishReason: "stop")], usage: usage
+                    choices: [.init(index: 0, text: text, finishReason: ended.reason)], usage: usage
                 ))
             } catch {
                 return .json(ServeErrorBody.server(Self.describe(error)), status: 500)
@@ -581,7 +599,7 @@ final class ServeRouter {
         return eventStream(events) { event in
             let (text, finish, usage): (String, String?, Usage?) = switch event {
             case .text(let text): (text, nil, nil)
-            case .done(let usage): ("", "stop", usage)
+            case .done(let usage, let ended): ("", ended.reason, usage)
             }
             let data = APIJSON.event(CompletionResponse(
                 id: id, created: created, model: model.alias,
@@ -595,7 +613,23 @@ final class ServeRouter {
 
     enum GenerationEvent: Sendable {
         case text(String)
-        case done(Usage)
+        case done(Usage, Finish)
+    }
+
+    /// Why a reply ended.
+    enum Finish: Sendable {
+        /// The model ended its turn, or a stop sequence was reached.
+        case stop
+        /// `max_tokens` was reached.
+        case length
+        /// Cut off for repeating itself (see `RepetitionGuard`).
+        case repeating
+
+        /// OpenAI's `finish_reason`. A reply cut off for repeating is
+        /// "length": it didn't end by itself.
+        var reason: String { self == .stop ? "stop" : "length" }
+
+        var note: StructuredNote? { self == .repeating ? StructuredNote(stoppedRepeating: true) : nil }
     }
 
     /// Streams `model`'s reply, then `.done` with usage. Ends early after
@@ -610,9 +644,19 @@ final class ServeRouter {
         let task = Task {
             var filter = StopSequenceFilter(stops)
             var count = 0
+            var finish = Finish.stop
             activity?.generating()
             capture.prompt(history)
             capture.generating()
+            /// Sends what the stop filter still holds, then the final event.
+            func end() {
+                let rest = filter.flush()
+                capture.append(rest)
+                if !rest.isEmpty { continuation.yield(.text(rest)) }
+                continuation.yield(.done(Usage(promptTokens: 0, completionTokens: count, totalTokens: count), finish))
+                continuation.finish()
+                activity?.finish()
+            }
             do {
                 for try await fragment in try await chat.reply(to: history, model: model.alias) {
                     count += 1
@@ -621,14 +665,16 @@ final class ServeRouter {
                     capture.token(text)
                     if !text.isEmpty { continuation.yield(.text(text)) }
                     if filter.isStopped { break }
-                    if let limit, limit > 0, count >= limit { break }
+                    if let limit, limit > 0, count >= limit {
+                        finish = .length
+                        break
+                    }
                 }
-                let rest = filter.flush()
-                capture.append(rest)
-                if !rest.isEmpty { continuation.yield(.text(rest)) }
-                continuation.yield(.done(Usage(promptTokens: 0, completionTokens: count, totalTokens: count)))
-                continuation.finish()
-                activity?.finish()
+                end()
+            } catch ChatServiceError.stoppedRepeating {
+                // The reply so far is sent; the finish reason says it was cut.
+                finish = .repeating
+                end()
             } catch is CancellationError {
                 activity?.finish(detail: "Stopped")
                 capture.failed("Stopped: the client disconnected")
@@ -668,16 +714,19 @@ final class ServeRouter {
         return HTTPResponse(status: 200, contentType: "text/event-stream", body: .stream(stream))
     }
 
-    private static func collect(_ events: AsyncThrowingStream<GenerationEvent, any Error>) async throws -> (String, Usage) {
+    private static func collect(
+        _ events: AsyncThrowingStream<GenerationEvent, any Error>
+    ) async throws -> (text: String, usage: Usage, finish: Finish) {
         var text = ""
         var usage = Usage(promptTokens: 0, completionTokens: 0, totalTokens: 0)
+        var finish = Finish.stop
         for try await event in events {
             switch event {
             case .text(let fragment): text += fragment
-            case .done(let final): usage = final
+            case .done(let final, let reason): (usage, finish) = (final, reason)
             }
         }
-        return (text, usage)
+        return (text, usage, finish)
     }
 
     // MARK: Models
@@ -741,10 +790,12 @@ final class ServeRouter {
 
     // MARK: Helpers
 
+    static let activityPath = "/v1/activity"
+
     private static let routes: Set<String> = [
         "/v1/models", "/v1/health", "/v1/ping", "/v1/chat/completions", "/v1/completions",
         "/v1/catalog", "/v1/models/download", "/v1/models/load", "/v1/models/unload", "/v1/models/delete",
-        "/v1/models/settings",
+        "/v1/models/settings", "/v1/activity",
         "/v1/audio/transcriptions", "/v1/audio/speech", "/v1/actions",
     ]
 

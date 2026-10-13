@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -15,15 +15,10 @@ struct ChatsTab: View {
             if let chat = viewModel.activeChat {
                 ChatView(viewModel: chat, list: viewModel)
                     .id(chat.conversation.id)
+                    .background { AmbientBackground() }
             } else {
-                ContentUnavailableView {
-                    Label("No chat open", systemImage: "bubble.left.and.bubble.right")
-                } description: {
-                    Text("Pick a chat or start a new one. Chats are saved on this device.")
-                } actions: {
-                    Button("New Chat", systemImage: "square.and.pencil", action: viewModel.newChat)
-                        .buttonStyle(.borderedProminent)
-                }
+                WelcomeView(viewModel: viewModel)
+                    .background { AmbientBackground() }
             }
         }
     }

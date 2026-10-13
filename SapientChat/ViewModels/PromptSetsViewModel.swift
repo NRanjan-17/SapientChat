@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Foundation
 import Observation
@@ -187,6 +187,8 @@ final class PromptSetsViewModel {
                 result.tokens += 1
                 if result.tokens >= limit || Task.isCancelled { break }
             }
+        } catch ChatServiceError.stoppedRepeating {
+            // The answer so far is the answer; it only stopped looping.
         } catch {
             if !(error is CancellationError) {
                 result.error = AppProblem.current(error, model: displayName(of: model)).title

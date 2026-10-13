@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import Foundation
 import Observation
@@ -24,6 +24,8 @@ final class ChatViewModel {
     /// Older messages left out of the last request because the chat has
     /// outgrown the model's context window.
     private(set) var droppedFromContext = 0
+    /// The last reply was cut off because it kept repeating itself.
+    private(set) var stoppedRepeating = false
     var draft = ""
 
     @ObservationIgnored private let services: AppServices
@@ -234,6 +236,7 @@ final class ChatViewModel {
     private func startReply() {
         let (history, dropped) = historyForModel
         droppedFromContext = dropped
+        stoppedRepeating = false
         let modelAlias = conversation.modelAlias
         let reply = store.append(.assistant, text: "", to: conversation)
         messages.append(reply.chatMessage)
@@ -299,6 +302,11 @@ final class ChatViewModel {
                     lastSave = now
                 }
             }
+            attach(meter.stats(model: modelAlias, backend: backendLabel, loadMs: loadMs), to: reply)
+            finishTurn(reply: reply, problem: nil)
+        } catch ChatServiceError.stoppedRepeating {
+            // Not a failure: the reply stays, with a line saying why it ended.
+            if currentReplyID == reply.id { stoppedRepeating = true }
             attach(meter.stats(model: modelAlias, backend: backendLabel, loadMs: loadMs), to: reply)
             finishTurn(reply: reply, problem: nil)
         } catch {

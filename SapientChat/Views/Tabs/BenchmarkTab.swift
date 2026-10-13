@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-// Copyright (C) 2026 Nalinish Ranjan — Sapient Chat: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
+// Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
 import SwiftUI
 
@@ -12,7 +12,6 @@ struct BenchmarkTab: View {
     var promptSets: PromptSetsViewModel?
     @State private var isShowingHistory = false
     @SceneStorage("benchmarkMode") private var mode = BenchmarkMode.single
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var isRunning: Bool { benchmark.isRunning || compare.isRunning || promptSets?.isRunning == true }
 
@@ -47,19 +46,7 @@ struct BenchmarkTab: View {
             .scrollEdgeEffectStyle(.hard, for: .bottom)
             .navigationTitle("Benchmark")
             .toolbarTitleDisplayMode(.inlineLarge)
-            // The two-form layout isn't one scroll view, and iPad then drew
-            // no title at all (and the bar's row is shared with the tabs):
-            // a large heading at the top left of the page, like Chats.
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if horizontalSizeClass == .regular {
-                    Text("Benchmark")
-                        .font(.largeTitle.bold())
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 4)
-                        .accessibilityAddTraits(.isHeader)
-                }
-            }
+            .pageTitle("Benchmark")
         }
     }
 }
