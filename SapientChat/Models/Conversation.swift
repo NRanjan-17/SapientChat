@@ -15,6 +15,9 @@ final class Conversation {
     var modelAlias: String
     var createdAt: Date
     var updatedAt: Date
+    /// Instructions sent to the model before this chat's messages; nil or
+    /// empty for none.
+    var systemPrompt: String?
     @Relationship(deleteRule: .cascade, inverse: \StoredMessage.conversation)
     var messages: [StoredMessage]
 

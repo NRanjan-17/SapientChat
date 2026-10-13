@@ -139,6 +139,11 @@ final class ModelManagerViewModel: Identifiable {
         services.temperatures.temperature(for: row.model.alias)
     }
 
+    /// Top-p, top-k and repetition penalty picked for `row`'s model.
+    func sampling(for row: Row) -> SamplingSettings {
+        services.sampling.settings(for: row.model.alias)
+    }
+
     /// Saves a new context window, reloading the model if it's in memory.
     func setContextWindow(_ tokens: Int?, for row: Row) {
         setSettings(temperature: temperature(for: row), contextWindow: tokens, for: row)
@@ -146,11 +151,15 @@ final class ModelManagerViewModel: Identifiable {
 
     /// Saves the model's temperature and context window, reloading it once
     /// if it's in memory and either changed.
-    func setSettings(temperature: Double?, contextWindow tokens: Int?, for row: Row) {
-        guard temperature != self.temperature(for: row) || tokens != contextWindow(for: row) else { return }
+    func setSettings(temperature: Double?, contextWindow tokens: Int?, sampling: SamplingSettings? = nil, for row: Row) {
+        let newSampling = (sampling ?? self.sampling(for: row)).normalized
+        guard temperature != self.temperature(for: row) || tokens != contextWindow(for: row)
+            || newSampling != self.sampling(for: row)
+        else { return }
         let alias = row.model.alias
         services.temperatures.set(temperature, for: alias)
         services.contextWindows.set(tokens, for: alias)
+        services.sampling.set(newSampling, for: alias)
         Task { await refresh() }
         guard row.isLoaded else { return }
         run(alias) { [self] in

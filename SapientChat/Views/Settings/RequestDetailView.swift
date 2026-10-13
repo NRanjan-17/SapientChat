@@ -8,6 +8,8 @@ import UIKit
 /// reply, and the raw request and response.
 struct RequestDetailView: View {
     let entry: RequestLogEntry
+    /// Opens this request in the Playground, to change it and send it again.
+    var onReplay: (RequestLogEntry) -> Void = { _ in }
 
     var body: some View {
         Form {
@@ -98,6 +100,12 @@ struct RequestDetailView: View {
         .readableContentWidth(760)
         .navigationTitle(entry.path)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Open in Playground", systemImage: "chevron.left.forwardslash.chevron.right") { onReplay(entry) }
+                    .disabled(!entry.canReplay)
+            }
+        }
     }
 
     private func raw(_ text: String) -> some View {

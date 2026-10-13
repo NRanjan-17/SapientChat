@@ -14,8 +14,12 @@ import Synchronization
 /// Differences from the desktop server, all set by the iOS engine API:
 /// - Only catalog models that fit a phone can be loaded.
 /// - Usage counts streamed fragments (≈ tokens); `prompt_tokens` is 0.
-/// - `temperature` and `tools` aren't applied per request; the engine caps
-///   a reply at 512 tokens.
+/// - `temperature` isn't applied per request (it's a model setting). A
+///   reply has no cap of its own: it runs until the model ends its turn,
+///   `max_tokens`, a stop sequence, or the end of the context window.
+/// - `tools` and `response_format` are best effort: the engine can't
+///   constrain a reply, so they're asked for in the prompt and read back
+///   (see `StructuredOutput`). Such replies arrive whole, not token by token.
 /// - `/v1/completions` runs the prompt through the chat template.
 /// - Audio and robot-action routes answer 501.
 ///
@@ -456,12 +460,11 @@ final class ServeRouter {
         } catch {
             return .json(ServeErrorBody.invalidRequest("Invalid request body: \(error.localizedDescription)"), status: 422)
         }
-        if body.tools?.isEmpty == false {
-            return .json(ServeErrorBody.modelNotFound("Tools aren't supported by SAPIENT's iOS engine; send the request without tools."), status: 400)
+        let structured = StructuredOutput(body: request.body)
+        guard let sent = StructuredOutput.history(body: request.body), !sent.isEmpty else {
+            return .json(ServeErrorBody.invalidRequest("messages must be non-empty and use the system, user, assistant or tool roles"), status: 400)
         }
-        guard let history = Self.history(body.messages), !history.isEmpty else {
-            return .json(ServeErrorBody.invalidRequest("messages must be non-empty and use the system, user or assistant roles"), status: 400)
-        }
+        let history = structured.applying(to: sent)
         let model: PhoneModel
         switch await prepare(body.model, activity: activity, capture: capture) {
         case .success(let ready): model = ready.model
@@ -472,6 +475,55 @@ final class ServeRouter {
         )
         let id = Self.newID()
         let created = Int(Date.now.timeIntervalSince1970)
+
+        func chunk(
+            _ delta: ChatCompletionChunk.Delta, finish: String? = nil, usage: Usage? = nil, note: StructuredNote? = nil
+        ) -> Data {
+            APIJSON.event(ChatCompletionChunk(
+                id: id, created: created, model: model.alias,
+                choices: [.init(index: 0, delta: delta, finishReason: finish)], usage: usage, sapient: note
+            ))
+        }
+
+        // Tools or a JSON format: the whole reply is read before anything
+        // is sent, since a tool call or a JSON value only shows once it's
+        // complete. A streamed request still gets a stream, in one piece.
+        if structured.isActive {
+            let text: String
+            let usage: Usage
+            do {
+                (text, usage) = try await Self.collect(events)
+            } catch {
+                return .json(ServeErrorBody.server(Self.describe(error)), status: 500)
+            }
+            let message: ServeMessage
+            let finish: String
+            var note: StructuredNote?
+            switch structured.interpret(text) {
+            case .toolCalls(let calls):
+                message = ServeMessage(role: "assistant", content: "", toolCalls: calls)
+                finish = "tool_calls"
+            case .content(let content, let jsonValid, let missingKeys):
+                message = ServeMessage(role: "assistant", content: content)
+                finish = "stop"
+                note = jsonValid.map { StructuredNote(jsonValid: $0, missingKeys: missingKeys.isEmpty ? nil : missingKeys) }
+            }
+            guard body.stream ?? false else {
+                return .json(ChatCompletionResponse(
+                    id: id, created: created, model: model.alias,
+                    choices: [.init(index: 0, message: message, finishReason: finish)], usage: usage, sapient: note
+                ))
+            }
+            let delta = ChatCompletionChunk.Delta(
+                content: message.toolCalls == nil ? message.content : nil, toolCalls: message.toolCalls
+            )
+            let frames = chunk(.init(role: "assistant")) + chunk(delta)
+                + chunk(.init(), finish: finish, usage: usage, note: note) + Self.done
+            let (stream, continuation) = AsyncThrowingStream<Data, any Error>.makeStream()
+            continuation.yield(frames)
+            continuation.finish()
+            return HTTPResponse(status: 200, contentType: "text/event-stream", body: .stream(stream))
+        }
 
         guard body.stream ?? false else {
             do {
@@ -486,12 +538,6 @@ final class ServeRouter {
             }
         }
 
-        func chunk(_ delta: ChatCompletionChunk.Delta, finish: String? = nil, usage: Usage? = nil) -> Data {
-            APIJSON.event(ChatCompletionChunk(
-                id: id, created: created, model: model.alias,
-                choices: [.init(index: 0, delta: delta, finishReason: finish)], usage: usage
-            ))
-        }
         // Like serve: the role first, then content, then a final chunk with
         // the finish reason and usage, then [DONE].
         return eventStream(events, first: chunk(.init(role: "assistant"))) { event in
@@ -703,16 +749,6 @@ final class ServeRouter {
     ]
 
     private static let done = Data("data: [DONE]\n\n".utf8)
-
-    /// Client messages as chat history; nil if a role isn't supported.
-    static func history(_ messages: [ServeMessage]) -> [ChatMessage]? {
-        var history: [ChatMessage] = []
-        for message in messages {
-            guard let role = ChatMessage.Role(rawValue: message.role) else { return nil }
-            history.append(ChatMessage(role: role, text: message.content))
-        }
-        return history
-    }
 
     private static func newID() -> String {
         "chatcmpl-" + UUID().uuidString.replacing("-", with: "").lowercased().prefix(24)

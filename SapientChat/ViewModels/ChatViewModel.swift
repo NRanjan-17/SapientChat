@@ -21,6 +21,9 @@ final class ChatViewModel {
     private(set) var modelDetails: LoadedModelDetails?
     /// Display names of the models in memory, most recently used first.
     private(set) var loadedModelNames: [String] = []
+    /// Older messages left out of the last request because the chat has
+    /// outgrown the model's context window.
+    private(set) var droppedFromContext = 0
     var draft = ""
 
     @ObservationIgnored private let services: AppServices
@@ -197,8 +200,40 @@ final class ChatViewModel {
 
     // MARK: Turn handling
 
+    /// Instructions the model gets before this chat's messages. They travel
+    /// with each request, so changing them needs no reload.
+    var systemPrompt: String {
+        get { conversation.systemPrompt ?? "" }
+        set {
+            let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            conversation.systemPrompt = trimmed.isEmpty ? nil : trimmed
+            store.save()
+        }
+    }
+
+    /// Roughly how full the context window is with this chat, its
+    /// instructions and the message being typed. An estimate: the engine
+    /// has no tokenizer to ask.
+    var contextEstimate: (tokens: Int, window: Int?) {
+        let text = ([systemPrompt] + messages.map(\.text) + [draft]).joined(separator: "\n")
+        let window = modelDetails?.contextLength
+            ?? model.map { TokenEstimate.window(for: $0, picked: services.contextWindows.tokens(for: $0.alias)) }
+        return (TokenEstimate.tokens(in: text), window)
+    }
+
+    /// What the model is sent: the chat's instructions, then its messages.
+    /// A chat longer than the model's context window keeps going: the
+    /// oldest messages are left out of what's sent (they stay in the chat).
+    private var historyForModel: (history: [ChatMessage], dropped: Int) {
+        let instructions = systemPrompt
+        let full = instructions.isEmpty ? messages : [ChatMessage(role: .system, text: instructions)] + messages
+        guard let window = contextEstimate.window else { return (full, 0) }
+        return TokenEstimate.fitting(full, window: window)
+    }
+
     private func startReply() {
-        let history = messages
+        let (history, dropped) = historyForModel
+        droppedFromContext = dropped
         let modelAlias = conversation.modelAlias
         let reply = store.append(.assistant, text: "", to: conversation)
         messages.append(reply.chatMessage)
@@ -318,15 +353,24 @@ final class ChatViewModel {
         setSettings(temperature: temperature, contextWindow: tokens)
     }
 
-    /// Saves the model's temperature and context window; if either changed
-    /// and the model is in memory, reloads it once so the next reply uses them.
-    func setSettings(temperature: Double?, contextWindow tokens: Int?) {
+    /// Top-p, top-k and repetition penalty picked for this chat's model.
+    var sampling: SamplingSettings {
+        services.sampling.settings(for: conversation.modelAlias)
+    }
+
+    /// Saves the model's temperature, context window and sampling (nil
+    /// leaves sampling as it is); if any changed and the model is in
+    /// memory, reloads it once so the next reply uses them.
+    func setSettings(temperature: Double?, contextWindow tokens: Int?, sampling: SamplingSettings? = nil) {
         let alias = conversation.modelAlias
+        let newSampling = (sampling ?? services.sampling.settings(for: alias)).normalized
         let changed = temperature != services.temperatures.temperature(for: alias)
             || tokens != services.contextWindows.tokens(for: alias)
+            || newSampling != services.sampling.settings(for: alias)
         guard changed else { return }
         services.temperatures.set(temperature, for: alias)
         services.contextWindows.set(tokens, for: alias)
+        services.sampling.set(newSampling, for: alias)
         guard modelDetails != nil else { return }
         Task {
             await services.chat.unload(model: alias)

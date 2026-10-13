@@ -67,7 +67,8 @@ nonisolated struct ChatCompletionRequest: Codable, Sendable {
     var stream: Bool?
     var maxTokens: Int?
     var stop: StopSequences?
-    var tools: [AnyCodable]?
+    // `tools`, `tool_choice` and `response_format` are read from the raw
+    // body by `StructuredOutput`, which keeps their key names as sent.
 }
 
 nonisolated struct CompletionRequest: Codable, Sendable {
@@ -83,13 +84,27 @@ nonisolated struct CompletionRequest: Codable, Sendable {
 nonisolated struct ServeMessage: Codable, Sendable {
     let role: String
     let content: String
+    /// Set on a reply that calls tools; `content` is then sent as null.
+    var toolCalls: [ToolCall]?
 
-    private enum CodingKeys: String, CodingKey { case role, content }
+    private enum CodingKeys: String, CodingKey { case role, content, toolCalls }
     private struct Part: Codable { let type: String; let text: String? }
 
-    init(role: String, content: String) {
+    init(role: String, content: String, toolCalls: [ToolCall]? = nil) {
         self.role = role
         self.content = content
+        self.toolCalls = toolCalls
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(role, forKey: .role)
+        if let toolCalls {
+            try container.encodeNil(forKey: .content)
+            try container.encode(toolCalls, forKey: .toolCalls)
+        } else {
+            try container.encode(content, forKey: .content)
+        }
     }
 
     init(from decoder: any Decoder) throws {
@@ -124,12 +139,15 @@ nonisolated struct ChatCompletionResponse: Codable, Sendable {
     let model: String
     let choices: [Choice]
     let usage: Usage
+    /// Present when the request asked for JSON (see `StructuredNote`).
+    var sapient: StructuredNote?
 }
 
 nonisolated struct ChatCompletionChunk: Codable, Sendable {
     struct Delta: Codable, Sendable {
         var role: String?
         var content: String?
+        var toolCalls: [ToolCall]?
     }
 
     struct Choice: Codable, Sendable {
@@ -144,6 +162,7 @@ nonisolated struct ChatCompletionChunk: Codable, Sendable {
     let model: String
     let choices: [Choice]
     var usage: Usage?
+    var sapient: StructuredNote?
 }
 
 nonisolated struct CompletionResponse: Codable, Sendable {

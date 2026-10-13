@@ -215,6 +215,7 @@ func makeServices(
         downloads: downloads ?? FakeDownloader(storage: storage),
         contextWindows: contextWindows,
         temperatures: temperatures,
+        sampling: SamplingStore(defaults: UserDefaults(suiteName: "sampling-\(UUID().uuidString)")!),
         memoryLedger: makeMemoryLedger()
     )
 }

@@ -17,6 +17,7 @@ actor SapientChatService: ChatService {
     private var generation: Task<Void, Never>?
     private let contextWindows: ContextWindowStore
     private let temperatures: TemperatureStore
+    private let sampling: SamplingStore
     /// Replies and benchmarks running or queued, per model.
     private var inUse: [String: Int] = [:]
     /// The backend each loaded model was loaded on.
@@ -28,10 +29,12 @@ actor SapientChatService: ChatService {
         cacheDirectory: URL = .cachesDirectory.appending(path: "sapient"),
         contextWindows: ContextWindowStore = .standard,
         temperatures: TemperatureStore = .standard,
+        sampling: SamplingStore = .standard,
         catalog: any ModelCatalogService = SapientModelCatalog()
     ) {
         self.contextWindows = contextWindows
         self.temperatures = temperatures
+        self.sampling = sampling
         self.catalog = catalog
         // Keep model downloads inside the app sandbox so the OS can reclaim
         // them and uninstalling the app removes them.
@@ -69,12 +72,23 @@ actor SapientChatService: ChatService {
         // small models. The context window is the user's pick for
         // this model, else the engine's (3072 tokens for models above 1.5B on
         // a phone, 8192 otherwise).
-        var options = GenerationOptions(maxTokens: 512)
-        options.contextLength = contextWindows.tokens(for: model).map(UInt32.init)
+        // No reply cap of the app's own: a reply may run to the end of the
+        // context window (it stops itself at end of turn, and chats, the
+        // Playground and API clients can stop it sooner).
+        let picked = contextWindows.tokens(for: model)
+        let window = catalog.chatModels().first { $0.alias == model }
+            .map { TokenEstimate.window(for: $0, picked: picked) } ?? TokenEstimate.defaultWindow
+        var options = GenerationOptions(maxTokens: UInt32(window))
+        options.contextLength = picked.map(UInt32.init)
+        // Top-p and top-k only mean something when sampling, so they are
+        // left unset for greedy decoding.
+        let sampled = sampling.settings(for: model)
         if let temperature = temperatures.temperature(for: model) {
             options.temperature = Float(temperature)
-            options.topP = TemperatureStore.topP
+            options.topP = sampled.topP.map(Float.init) ?? TemperatureStore.topP
+            options.topK = sampled.topK.map(UInt32.init)
         }
+        options.repetitionPenalty = sampled.repetitionPenalty.map(Float.init)
         // Compute setting: CPU + GPU by default, the GPU alone when hot or in
         // Low Power Mode, the CPU while serving in the background.
         options.backend = backend

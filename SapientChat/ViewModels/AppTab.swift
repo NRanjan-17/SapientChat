@@ -4,6 +4,7 @@
 /// The app's top-level sections.
 nonisolated enum AppTab: String, CaseIterable, Sendable {
     case chats
+    case playground
     case models
     case benchmark
     case settings
@@ -11,6 +12,7 @@ nonisolated enum AppTab: String, CaseIterable, Sendable {
     var title: String {
         switch self {
         case .chats: "Chats"
+        case .playground: "Playground"
         case .models: "Models"
         case .benchmark: "Benchmark"
         case .settings: "Settings"
@@ -20,6 +22,7 @@ nonisolated enum AppTab: String, CaseIterable, Sendable {
     var symbol: String {
         switch self {
         case .chats: "bubble.left.and.bubble.right"
+        case .playground: "chevron.left.forwardslash.chevron.right"
         case .models: "square.stack.3d.up"
         case .benchmark: "gauge.with.dots.needle.67percent"
         case .settings: "gearshape"

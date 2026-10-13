@@ -151,7 +151,7 @@ struct ServeRouterTests {
     @Test func rejectsUnknownModelsRolesAndMissingKeys() async throws {
         let (router, _) = makeRouter()
         #expect(await router.handle(post("/v1/chat/completions", #"{"model":"nope","messages":[{"role":"user","content":"Hi"}]}"#)).status == 400)
-        #expect(await router.handle(post("/v1/chat/completions", #"{"model":"smollm2-135m-q4","messages":[{"role":"tool","content":"x"}]}"#)).status == 400)
+        #expect(await router.handle(post("/v1/chat/completions", #"{"model":"smollm2-135m-q4","messages":[{"role":"robot","content":"x"}]}"#)).status == 400)
         #expect(await router.handle(HTTPRequest(method: "POST", path: "/v1/audio/speech")).status == 501)
         #expect(await router.handle(HTTPRequest(method: "GET", path: "/nope")).status == 404)
 

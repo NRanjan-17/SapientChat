@@ -11,6 +11,7 @@ struct ChatView: View {
     @State private var isShowingStats = false
     @State private var isShowingSettings = false
     @State private var isConfirmingDownload = false
+    @State private var isEditingSystemPrompt = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
@@ -44,7 +45,9 @@ struct ChatView: View {
                 isGenerating: viewModel.isGenerating,
                 canSend: viewModel.canSend,
                 onSend: send,
-                onStop: viewModel.stop
+                onStop: viewModel.stop,
+                footnote: contextFootnote,
+                footnoteWarns: contextIsNearlyFull
                 )
             }
             .animation(.smooth, value: viewModel.status)
@@ -61,6 +64,10 @@ struct ChatView: View {
                     if viewModel.model != nil {
                         Button("Model Settings…", systemImage: "slider.horizontal.3", action: showSettings)
                     }
+                    Button(
+                        viewModel.systemPrompt.isEmpty ? "System Prompt…" : "Edit System Prompt…",
+                        systemImage: "text.quote"
+                    ) { isEditingSystemPrompt = true }
                 } label: {
                     // The name is already the subtitle; on iPhone the bar
                     // has no room to say it twice.
@@ -91,6 +98,9 @@ struct ChatView: View {
         } message: {
             Text(downloadMessage)
         }
+        .sheet(isPresented: $isEditingSystemPrompt) {
+            SystemPromptSheet(text: viewModel.systemPrompt) { viewModel.systemPrompt = $0 }
+        }
         .sheet(isPresented: $isShowingStats) {
             ModelStatsSheet(viewModel: viewModel)
         }
@@ -100,9 +110,11 @@ struct ChatView: View {
                     model: model,
                     temperature: viewModel.temperature,
                     contextWindow: viewModel.contextWindow,
-                    isLoaded: viewModel.modelDetails != nil,
-                    onSave: viewModel.setSettings
-                )
+                    sampling: viewModel.sampling,
+                    isLoaded: viewModel.modelDetails != nil
+                ) { temperature, tokens, sampling in
+                    viewModel.setSettings(temperature: temperature, contextWindow: tokens, sampling: sampling)
+                }
             }
         }
     }
@@ -119,6 +131,24 @@ struct ChatView: View {
     private func sendSuggestion(_ text: String) {
         viewModel.draft = text
         send()
+    }
+
+    /// Shown while typing, and whenever the chat has used most of its window.
+    private var contextFootnote: String? {
+        let dropped = viewModel.droppedFromContext
+        if dropped > 0 {
+            return "Long chat: the model no longer sees the oldest \(dropped == 1 ? "message" : "\(dropped) messages")"
+        }
+        let estimate = viewModel.contextEstimate
+        guard !viewModel.draft.isEmpty || contextIsNearlyFull else { return nil }
+        return TokenEstimate.label(tokens: estimate.tokens, window: estimate.window)
+    }
+
+    private var contextIsNearlyFull: Bool {
+        if viewModel.droppedFromContext > 0 { return false }
+        let estimate = viewModel.contextEstimate
+        guard let window = estimate.window, window > 0 else { return false }
+        return Double(estimate.tokens) / Double(window) >= 0.8
     }
 
     /// Asks before the first message starts a download, so its size (and

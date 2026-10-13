@@ -1,4 +1,4 @@
-# Sapient Chat
+# Sapient Studio
 
 Run large language models on iPhone and iPad, entirely on the device, with
 [SAPIENT](https://github.com/SkidGod4444/sapient), a pure-Rust edge inference
@@ -88,7 +88,7 @@ SapientChat/          the app
   Views/              SwiftUI
 Activity/             Live Activity widget extension
 Shared/               types used by both (activity attributes)
-SapientKit/           Swift package for other apps to call Sapient Chat
+SapientKit/           Swift package for other apps to call Sapient Studio
 SapientChatTests/     unit tests (Swift Testing)
 docs/                 integration guide
 ```
@@ -101,16 +101,16 @@ to answer API requests on your network.
 
 ## License
 
-Sapient Chat is **dual-licensed** by Nalinish Ranjan: the
+Sapient Studio is **dual-licensed** by Nalinish Ranjan: the
 [GNU AGPL-3.0-only](LICENSE) **or** a [commercial license](COMMERCIAL-LICENSE.md)
 for uses that aren't compatible with the AGPL (closed source, rebranding).
 [SapientKit](SapientKit/) is [MIT](SapientKit/LICENSE), so any app can use it to
-talk to Sapient Chat. Every source file carries an SPDX header.
+talk to Sapient Studio. Every source file carries an SPDX header.
 
 Third-party parts (details in [NOTICE](NOTICE)):
 
 - The **SAPIENT engine** is AGPL-3.0-only or commercial from OpenHorizon Labs Pvt
-  Ltd. Using Sapient Chat outside the AGPL also needs the engine's commercial
+  Ltd. Using Sapient Studio outside the AGPL also needs the engine's commercial
   license. "SAPIENT" and its logo are OpenHorizon Labs trademarks.
 - Model maker logos come from [LobeHub Icons](https://github.com/lobehub/lobe-icons)
   (MIT) and are trademarks of their owners.

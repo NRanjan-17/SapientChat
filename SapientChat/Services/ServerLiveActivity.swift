@@ -61,7 +61,35 @@ final class ServerLiveActivity: LiveActivityService {
         }
     }
 
-    /// Ends it, e.g. when the server or background mode is turned off.
+    /// The app is leaving the foreground without background mode: iOS will
+    /// suspend it shortly, so the Island says the server is waiting to be
+    /// reopened instead of looking live. Sent now, while the app still runs.
+    func pause() {
+        guard id != nil, state.phase == .serving else { return }
+        heartbeat?.cancel()
+        heartbeat = nil
+        state.phase = .paused
+        state.detail = "Open Sapient to resume"
+        send(force: true)
+    }
+
+    /// Back in front: serving again.
+    func resume() {
+        guard id != nil, state.phase == .paused else { return }
+        state.phase = .serving
+        state.detail = "Waiting for requests"
+        send(force: true)
+        let interval = heartbeatInterval
+        heartbeat = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled else { return }
+                self?.send(force: true)
+            }
+        }
+    }
+
+    /// Ends it, e.g. when the server is turned off.
     func finish() {
         pending?.cancel()
         pending = nil
