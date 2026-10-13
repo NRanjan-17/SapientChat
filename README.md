@@ -34,8 +34,8 @@ then run offline.
 
 ## Build and run
 
-1. Open `SapientChat.xcodeproj`.
-2. Select the **SapientChat** scheme, set your team under Signing & Capabilities
+1. Open `SapientStudio.xcodeproj`.
+2. Select the **SapientStudio** scheme, set your team under Signing & Capabilities
    (app and `Activity` targets).
 3. Run on a device or simulator.
 
@@ -46,8 +46,8 @@ which Xcode resolves on first build.
 Tests:
 
 ```bash
-xcodebuild test -project SapientChat.xcodeproj -scheme SapientChat \
-  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:SapientChatTests
+xcodebuild test -project SapientStudio.xcodeproj -scheme SapientStudio \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -only-testing:SapientStudioTests
 swift test    # SapientKit, from the repository root
 ```
 
@@ -101,7 +101,7 @@ notch it sits at the top centre of the menu bar.
 ## Project layout
 
 ```
-SapientChat/          the app
+SapientStudio/          the app
   App/                entry point, menu commands
   Models/             value types (PhoneModel, ComputePreference, …)
   Services/           engine, downloads, Live Activities, background work
@@ -111,7 +111,7 @@ SapientChat/          the app
 Activity/             Live Activity widget extension
 Shared/               types used by both (activity attributes)
 SapientKit/           Swift package for other apps to call Sapient Studio
-SapientChatTests/     unit tests (Swift Testing)
+SapientStudioTests/     unit tests (Swift Testing)
 docs/                 integration guide
 ```
 
