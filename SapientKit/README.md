@@ -1,23 +1,23 @@
 # SapientKit
 
-Call **SapientChat** — the app that downloads, loads and runs SAPIENT models on
-iPhone and iPad — from your own app. SapientChat holds the models (up to four in
+Call **SapientStudio** — the app that downloads, loads and runs SAPIENT models on
+iPhone and iPad — from your own app. SapientStudio holds the models (up to four in
 memory at once); your app asks it to load one and run chats.
 
-## Two ways to reach SapientChat
+## Two ways to reach SapientStudio
 
 | Where your app runs | Route | Streaming |
 | --- | --- | --- |
 | Another device (Mac, phone, server) on the same network | HTTP to the API server | Yes |
-| Beside SapientChat on iPad (Split View, Stage Manager) | HTTP to `127.0.0.1:11435` | Yes |
-| Same iPhone | URL handoff: SapientChat comes to the front, runs the request, returns to your app | No — the full reply arrives at once |
+| Beside SapientStudio on iPad (Split View, Stage Manager) | HTTP to `127.0.0.1:11435` | Yes |
+| Same iPhone | URL handoff: SapientStudio comes to the front, runs the request, returns to your app | No — the full reply arrives at once |
 
-iOS suspends apps in the background, so on the same iPhone SapientChat's server
+iOS suspends apps in the background, so on the same iPhone SapientStudio's server
 can't answer while your app is in front. The handoff covers that case.
 `SapientClient.automatic` tries HTTP first and falls back to the handoff.
 
-HTTP needs the server on: in SapientChat, tap **API Server** and turn it on.
-It answers while SapientChat is open; Debug/sideload builds can keep it
+HTTP needs the server on: in SapientStudio, tap **API Server** and turn it on.
+It answers while SapientStudio is open; Debug/sideload builds can keep it
 answering with the app closed (Endpoints & Access → Keep running in background).
 Other ways to use SAPIENT, including embedding the engine in your own app:
 [docs/INTEGRATION.md](../docs/INTEGRATION.md).
@@ -36,7 +36,7 @@ the app itself isn't part of the package). Or in `Package.swift`:
 ```swift
 .package(url: "https://github.com/NRanjan-17/SapientChat", from: "1.0.0"),
 // target dependency:
-.product(name: "SapientKit", package: "SapientChat"),
+.product(name: "SapientKit", package: "SapientStudio"),
 ```
 
 Requires iOS 18 / macOS 15. MIT-licensed. Then:
@@ -62,12 +62,12 @@ For the handoff (`.handoff` or `.automatic`):
 3. Optional: add `sapient` to `LSApplicationQueriesSchemes` in Info.plist to check
    `HandoffTransport.isSapientInstalled` first.
 
-If an API key is set on SapientChat's server screen, pass it as `apiKey:`.
+If an API key is set on SapientStudio's server screen, pass it as `apiKey:`.
 
 ## Use
 
 ```swift
-// Is SapientChat there? No model work.
+// Is SapientStudio there? No model work.
 let up = try await sapient.ping()
 
 // What the device offers, and what's downloaded, loaded, and fits in memory.
@@ -113,12 +113,12 @@ header too. Without it, Sapient falls back to the `User-Agent` (iOS apps send
 A client can claim any name, so treat it as a label, not proof.
 
 Errors are `SapientError`: `.api(status:message:)`, `.unavailable` (not installed
-or not reachable), `.cancelled` (the user cancelled in SapientChat),
+or not reachable), `.cancelled` (the user cancelled in SapientStudio),
 `.invalidResponse`.
 
 ## The API
 
-SapientChat serves `sapient serve`'s OpenAI-compatible routes, plus model
+SapientStudio serves `sapient serve`'s OpenAI-compatible routes, plus model
 management. Any HTTP client works; SapientKit is a convenience.
 
 | Route | |
@@ -149,14 +149,14 @@ sapient://x-callback-url/request
   &method=POST                    default: POST with a body, else GET
   &body=<base64url JSON>          request body (stream is turned off)
   &key=<API key>                  if the server has one set
-  &x-source=<app name>            shown in SapientChat while it runs
+  &x-source=<app name>            shown in SapientStudio while it runs
   &x-success=<url>                gets ?status=<code>&body=<base64url JSON>
   &x-error=<url>                  same plus error=<message>, for 4xx/5xx
   &x-cancel=<url>                 opened if the user cancels
 ```
 
 Plain JSON replies are indented with sorted keys; streamed events are one line
-each. Downloads and loads started over the API show in SapientChat's Models tab
+each. Downloads and loads started over the API show in SapientStudio's Models tab
 and Dynamic Island, and every request is in its Request Log with the prompt,
 reply and timing.
 

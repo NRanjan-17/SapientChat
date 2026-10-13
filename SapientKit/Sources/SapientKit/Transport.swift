@@ -3,7 +3,7 @@
 
 import Foundation
 
-/// How requests reach SapientChat.
+/// How requests reach SapientStudio.
 public protocol SapientTransport: Sendable {
     /// Sends one request and returns the status and body.
     func send(method: String, path: String, body: Data?) async throws -> (status: Int, body: Data)
@@ -14,8 +14,8 @@ public protocol SapientTransport: Sendable {
     func events(path: String, body: Data) -> AsyncThrowingStream<Data, any Error>?
 }
 
-/// Calls SapientChat's API server over HTTP: from another device, from an
-/// app beside SapientChat on iPad, or from a Mac.
+/// Calls SapientStudio's API server over HTTP: from another device, from an
+/// app beside SapientStudio on iPad, or from a Mac.
 public struct HTTPTransport: SapientTransport {
     public let baseURL: URL
     public let apiKey: String?
@@ -109,7 +109,7 @@ public struct HTTPTransport: SapientTransport {
     }
 }
 
-/// Tries HTTP first and, when SapientChat can't be reached that way (it's
+/// Tries HTTP first and, when SapientStudio can't be reached that way (it's
 /// suspended in the background on this iPhone), hands the request over.
 public struct FallbackTransport: SapientTransport {
     public let primary: HTTPTransport

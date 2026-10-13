@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenHorizon Labs Pvt Ltd — Sapient Studio: AGPL-3.0-only OR commercial (see LICENSE, NOTICE)
 
-// Writes SapientChat's app icon as an Icon Composer bundle (AppIcon.icon):
+// Writes SapientStudio's app icon as an Icon Composer bundle (AppIcon.icon):
 // icon.json plus the SAPIENT mark as an SVG layer. iOS renders it with
 // Liquid Glass and derives the tinted and clear looks. Open the result in
 // Icon Composer (inside Xcode) to fine-tune glass, shadow and translucency.
 //
-//   swift Tools/make-app-icon.swift SapientChat/AppIcon.icon
+//   swift Tools/make-app-icon.swift SapientStudio/AppIcon.icon
 //
 // The mark is SAPIENT's logo (three angled bars), traced as vector shapes
 // from the official app icon at sapient.openhorizon.so. Colours follow the
