@@ -17,7 +17,7 @@ struct ModelRow: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(row.model.displayName)
                         .font(.headline)
-                        .lineLimit(1)
+                        .lineLimit(2)
                     ModelSpecChips(model: row.model)
                     status
                         .font(.caption)
@@ -41,7 +41,7 @@ struct ModelRow: View {
 
     @ViewBuilder private var status: some View {
         if !row.fits {
-            IconText("Needs more memory than iOS allows now", systemImage: "exclamationmark.triangle.fill")
+            IconText("Too large for the memory free right now", systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.red)
         } else if row.isLoaded {
             IconText("In memory", systemImage: "memorychip.fill")
@@ -55,7 +55,7 @@ struct ModelRow: View {
                 IconText("Paused at \(Format.bytes(bytes)) · resumes when used", systemImage: "arrow.down.circle.dotted")
                     .foregroundStyle(.secondary)
             case .notDownloaded:
-                IconText("Downloads when first used", systemImage: "arrow.down.circle")
+                IconText("\(row.model.downloadSizeText) download when first used", systemImage: "arrow.down.circle")
                     .foregroundStyle(.secondary)
             }
         }

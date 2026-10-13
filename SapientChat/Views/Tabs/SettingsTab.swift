@@ -69,19 +69,22 @@ struct SettingsTab: View {
                 AboutSection()
             }
             .readableContentWidth(720)
+            .scrollEdgeEffectStyle(.hard, for: .bottom)
             .navigationTitle("Settings")
+            // The same title row as Chats and Benchmark.
+            .toolbarTitleDisplayMode(.inlineLarge)
         }
     }
 
     private var computeFooter: String {
         let what = switch compute {
         case .automatic:
-            "CPU + GPU: the GPU reads your prompt, the CPU writes the reply. While the phone is hot or in Low Power Mode, the GPU alone, so it runs cooler."
+            "Picks the fastest option, and a cooler one while the device is hot or in Low Power Mode."
         case .hybrid: "The GPU reads your prompt, the CPU writes the reply."
         case .gpu: "Everything on the GPU."
         case .cpu: "Everything on the CPU."
         }
-        return what + " Models in memory reload when you change this. While the API server runs in the background, models use the CPU (iOS allows no GPU work there)."
+        return what + " Changing this reloads models in memory."
     }
 }
 

@@ -10,11 +10,25 @@ struct BenchmarkSettingsSection: View {
     /// "Benchmark prompt".
     var promptTitle = "Prompt"
 
+    /// 32–512, plus the current value if it's set to something else.
+    static func tokenChoices(including current: Int) -> [Int] {
+        Set([32, 64, 128, 256, 384, 512] + [current]).sorted()
+    }
+
     var body: some View {
         Section {
-            Stepper("Tokens per run: \(settings.maxTokens)", value: $settings.maxTokens, in: 32...512, step: 32)
-            Stepper("Measured runs: \(settings.runs)", value: $settings.runs, in: 1...10)
-            Stepper("Warm-up runs: \(settings.warmup)", value: $settings.warmup, in: 0...3)
+            // A menu, not a stepper: 32 to 512 is fifteen taps apart.
+            Picker("Tokens per run", selection: $settings.maxTokens) {
+                ForEach(Self.tokenChoices(including: settings.maxTokens), id: \.self) { tokens in
+                    Text(tokens, format: .number).tag(tokens)
+                }
+            }
+            Stepper(value: $settings.runs, in: 1...10) {
+                LabeledContent("Measured runs", value: settings.runs, format: .number)
+            }
+            Stepper(value: $settings.warmup, in: 0...3) {
+                LabeledContent("Warm-up runs", value: settings.warmup, format: .number)
+            }
             Picker("Compute", selection: $settings.compute) {
                 Text("As in Settings").tag(ComputePreference?.none)
                 ForEach(ComputePreference.allCases.filter { $0 != .automatic }, id: \.self) { compute in

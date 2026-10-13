@@ -20,21 +20,32 @@ struct ModelManagerRow: View {
 
     let row: ModelManagerViewModel.Row
     let actions: Actions
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             ModelTile(model: row.model, isLoaded: row.isLoaded)
             VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .center, spacing: 8) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    // At large text sizes the name gets the full width and
+                    // the buttons a row of their own.
                     Text(row.model.displayName)
                         .font(.headline)
-                        .lineLimit(1)
-                    Spacer(minLength: 4)
                     ModelManagerButtons(row: row, actions: actions)
+                } else {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(row.model.displayName)
+                            .font(.headline)
+                            .lineLimit(2)
+                        Spacer(minLength: 4)
+                        ModelManagerButtons(row: row, actions: actions)
+                    }
                 }
                 ModelSpecChips(model: row.model)
                 status
-                if row.activity == nil {
+                // Settings matter once the model is here; before that
+                // they're in the ⋯ menu.
+                if row.activity == nil && row.download.isDownloaded {
                     Button(action: { actions.settings(row) }) {
                         IconText(settingsText, systemImage: "slider.horizontal.3")
                             .font(.caption)
@@ -90,10 +101,10 @@ struct ModelManagerRow: View {
                             .foregroundStyle(.secondary)
                     case .notDownloaded:
                         if row.fits {
-                            IconText("Not downloaded", systemImage: "arrow.down.circle")
+                            IconText("\(row.model.downloadSizeText) download", systemImage: "arrow.down.circle")
                                 .foregroundStyle(.secondary)
                         } else {
-                            IconText("Needs more memory than iOS allows now", systemImage: "exclamationmark.triangle.fill")
+                            IconText("Too large for the memory free right now", systemImage: "exclamationmark.triangle.fill")
                                 .foregroundStyle(.red)
                         }
                     }

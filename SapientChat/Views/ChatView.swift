@@ -10,12 +10,20 @@ struct ChatView: View {
     @State private var modelSelector: ModelSelectorViewModel?
     @State private var isShowingStats = false
     @State private var isShowingSettings = false
+    @State private var isConfirmingDownload = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         Group {
             if viewModel.messages.isEmpty {
-                EmptyChatView(modelName: viewModel.modelName, onSuggestion: sendSuggestion)
+                EmptyChatView(
+                    modelName: viewModel.modelName,
+                    model: viewModel.model,
+                    download: viewModel.modelDownload,
+                    canChangeModel: !viewModel.isBusy,
+                    onChangeModel: openModelSelector,
+                    onSuggestion: sendSuggestion
+                )
             } else {
                 MessageListView(
                     messages: viewModel.messages,
@@ -31,11 +39,11 @@ struct ChatView: View {
                 ModelStatusCard(status: viewModel.status, onCancel: viewModel.stop, onRetry: viewModel.regenerate)
                 ChatInputBar(
                 draft: $viewModel.draft,
-                placeholder: "Message \(viewModel.modelName)…",
+                placeholder: "Message",
                 isBusy: viewModel.isBusy,
                 isGenerating: viewModel.isGenerating,
                 canSend: viewModel.canSend,
-                onSend: viewModel.send,
+                onSend: send,
                 onStop: viewModel.stop
                 )
             }
@@ -54,8 +62,15 @@ struct ChatView: View {
                         Button("Model Settings…", systemImage: "slider.horizontal.3", action: showSettings)
                     }
                 } label: {
-                    Label(viewModel.modelName, systemImage: "square.stack.3d.up")
-                        .labelStyle(.titleAndIcon)
+                    // The name is already the subtitle; on iPhone the bar
+                    // has no room to say it twice.
+                    if horizontalSizeClass == .compact {
+                        Label("Model: \(viewModel.modelName)", systemImage: "square.stack.3d.up")
+                            .labelStyle(.iconOnly)
+                    } else {
+                        Label(viewModel.modelName, systemImage: "square.stack.3d.up")
+                            .labelStyle(.titleAndIcon)
+                    }
                 }
                 .disabled(viewModel.isBusy)
             }
@@ -70,6 +85,12 @@ struct ChatView: View {
             ModelSelectorView(viewModel: selector)
         }
         .problemAlert($viewModel.alert) { _ in viewModel.regenerate() }
+        .alert("Download \(viewModel.modelName)?", isPresented: $isConfirmingDownload) {
+            Button("Download and Send", action: viewModel.send)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(downloadMessage)
+        }
         .sheet(isPresented: $isShowingStats) {
             ModelStatsSheet(viewModel: viewModel)
         }
@@ -97,7 +118,28 @@ struct ChatView: View {
 
     private func sendSuggestion(_ text: String) {
         viewModel.draft = text
-        viewModel.send()
+        send()
+    }
+
+    /// Asks before the first message starts a download, so its size (and
+    /// cellular data) is never a surprise.
+    private func send() {
+        if viewModel.canSend && viewModel.needsDownloadToSend {
+            isConfirmingDownload = true
+        } else {
+            viewModel.send()
+        }
+    }
+
+    private var downloadMessage: String {
+        var text = "This model isn't on your \(UIDevice.current.model) yet."
+        if let model = viewModel.model {
+            text += " Download: \(model.downloadSizeText), once. After that it works offline."
+        }
+        if NetworkMonitor.shared.isExpensive {
+            text += " You're on cellular data."
+        }
+        return text
     }
 
     private func openModelSelector() {

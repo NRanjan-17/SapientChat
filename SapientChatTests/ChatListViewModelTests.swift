@@ -38,6 +38,16 @@ struct ChatListViewModelTests {
         #expect(list.activeChat?.conversation.modelAlias == TestModels.big.alias)
     }
 
+    @Test func aChatWithNoMessagesIsReusedNotDuplicated() {
+        let list = makeList()
+        list.newChat()
+        list.newChat()
+        #expect(list.conversations.count == 1)
+        list.newChat(model: TestModels.big.alias)
+        #expect(list.conversations.count == 1)
+        #expect(list.activeChat?.conversation.modelAlias == TestModels.big.alias)
+    }
+
     @Test func chatsAndMessagesComeBackAfterRelaunch() async {
         let list = makeList()
         list.newChat()

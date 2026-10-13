@@ -181,6 +181,17 @@ struct MemoryFitTests {
         #expect(full.estimatedMemoryBytes.distance(to: 2_810_000_000).magnitude < 1_000)
     }
 
+    @Test func downloadSizeIsTheMeasuredFileOrAnEstimate() {
+        let known = PhoneModel(alias: "a", repoId: "unsloth/SmolLM2-135M-Instruct-GGUF", params: "135M Q4_K_M", billions: 0.135)
+        let unknownQ4 = PhoneModel(alias: "b", repoId: "b", params: "1B Q4_K_M", billions: 1)
+        let unknownFull = PhoneModel(alias: "c", repoId: "c", params: "1B", billions: 1)
+        #expect(known.estimatedDownloadBytes == 105_000_000)
+        #expect(known.downloadSizeText == "105 MB")
+        #expect(unknownQ4.downloadSizeText == "About 800 MB")
+        #expect(unknownQ4.estimatedDownloadBytes == 800_000_000)
+        #expect(unknownFull.estimatedDownloadBytes == 2_000_000_000)
+    }
+
     @Test func memoryFreedByTheCurrentModelCounts() {
         let full = TestModels.big
         #expect(full.fitProblem(availableBytes: 2_000_000_000) != nil)

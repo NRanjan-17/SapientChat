@@ -108,6 +108,7 @@ struct Chip: View {
             .font(.caption2.weight(.semibold))
             .foregroundStyle(color)
             .lineLimit(1)
+            .fixedSize()
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(color.opacity(0.14), in: .capsule)
@@ -119,11 +120,18 @@ struct ModelSpecChips: View {
     let model: PhoneModel
 
     var body: some View {
-        HStack(spacing: 5) {
-            Chip(model.sizeText)
-            Chip(model.formatChip.text, color: model.formatChip.color)
-            Chip("\(Format.compactBytes(model.estimatedMemoryBytes)) RAM")
+        // Side by side when they fit; stacked at large text sizes, where a
+        // row would cut each one short.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 5) { chips }
+            VStack(alignment: .leading, spacing: 4) { chips }
         }
+    }
+
+    @ViewBuilder private var chips: some View {
+        Chip(model.sizeText)
+        Chip(model.formatChip.text, color: model.formatChip.color)
+        Chip("\(Format.compactBytes(model.estimatedMemoryBytes)) RAM")
     }
 }
 

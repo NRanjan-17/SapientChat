@@ -11,13 +11,17 @@ nonisolated final class NetworkMonitor: Sendable {
 
     private let monitor = NWPathMonitor()
     private let offline = Atomic<Bool>(false)
+    private let expensive = Atomic<Bool>(false)
 
     private init() {
         monitor.pathUpdateHandler = { [weak self] path in
             self?.offline.store(path.status != .satisfied, ordering: .relaxed)
+            self?.expensive.store(path.isExpensive, ordering: .relaxed)
         }
         monitor.start(queue: DispatchQueue(label: "SapientChat.NetworkMonitor"))
     }
 
     var isOffline: Bool { offline.load(ordering: .relaxed) }
+    /// On cellular data or a personal hotspot, where a download costs money.
+    var isExpensive: Bool { expensive.load(ordering: .relaxed) }
 }

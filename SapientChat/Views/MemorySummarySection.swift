@@ -14,14 +14,16 @@ struct MemorySummarySection: View {
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .firstTextBaseline) {
-                    IconText("Memory", systemImage: "memorychip")
-                        .font(.headline)
-                    Spacer()
-                    if let used = memory.residentBytes {
-                        Text("\(Format.bytes(used)) used")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(pressureColor)
+                // One line when it fits; two at large text sizes.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) {
+                        title
+                        Spacer()
+                        usedText
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        title
+                        usedText
                     }
                 }
                 if let fraction = usedFraction {
@@ -36,7 +38,7 @@ struct MemorySummarySection: View {
                         }
                         .frame(height: 10)
                         if let available = memory.availableBytes {
-                            Text("iOS allows \(Format.bytes(available)) more")
+                            Text("\(Format.bytes(available)) more is free for models")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -54,10 +56,11 @@ struct MemorySummarySection: View {
                     .accessibilityLabel("\(loaded.count) of \(capacity) models loaded")
                     Spacer(minLength: 8)
                     if let onUnloadAll {
-                        Button("Unload All", systemImage: "eject", role: .destructive, action: onUnloadAll)
+                        // Not destructive: the models stay downloaded.
+                        Button("Unload All", systemImage: "eject", action: onUnloadAll)
                             .font(.subheadline)
                             .buttonStyle(.borderless)
-                            .foregroundStyle(loaded.isEmpty ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                            .frame(minHeight: 44)
                             .disabled(loaded.isEmpty)
                             .accessibilityLabel("Unload All Models")
                     }
@@ -66,6 +69,21 @@ struct MemorySummarySection: View {
             .padding(.vertical, 6)
         } footer: {
             Text("Up to \(capacity) models stay loaded, so switching between their chats is instant. Loading another releases the one used least recently.")
+        }
+    }
+
+    private var title: some View {
+        IconText("In Memory", systemImage: "memorychip")
+            .font(.headline)
+            .fixedSize()
+    }
+
+    /// The app's own memory plus its loaded models.
+    @ViewBuilder private var usedText: some View {
+        if let used = memory.residentBytes {
+            Text("Sapient is using \(Format.bytes(used))")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(pressureColor)
         }
     }
 

@@ -51,6 +51,9 @@ struct MessageListView: View {
                                     .padding(.leading, horizontalSizeClass == .regular ? 0 : 6)
                                     .transition(.opacity)
                             }
+                            if showsActions(for: message) {
+                                replyActions(for: message)
+                            }
                         }
                         .transition(transition(for: message))
                     }
@@ -65,6 +68,26 @@ struct MessageListView: View {
         .defaultScrollAnchor(.bottom)
         .defaultScrollAnchor(.bottom, for: .sizeChanges)
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    /// The newest reply, once it has finished: its actions are shown, not
+    /// only behind a long press.
+    private func showsActions(for message: ChatMessage) -> Bool {
+        canRegenerate && message.role == .assistant && message.id == messages.last?.id && editingID == nil
+    }
+
+    private func replyActions(for message: ChatMessage) -> some View {
+        HStack(spacing: 0) {
+            Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = message.text }
+            Button("Regenerate", systemImage: "arrow.clockwise", action: onRegenerate)
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .frame(minHeight: 44)
+        .buttonBorderShape(.circle)
+        .controlSize(.large)
     }
 
     private func startEditing(_ message: ChatMessage) {
